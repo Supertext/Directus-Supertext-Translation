@@ -18,7 +18,8 @@ type Env = Record<string, unknown>;
 /** Directus may hand over JSON env values already parsed (`json:` prefix) or as strings. */
 function jsonObject(value: unknown, name: string): Record<string, string> {
 	if (value === undefined || value === null || value === '') return {};
-	let v = value;
+	// Directus' env parser turns a value containing a comma into an array: join it back.
+	let v = Array.isArray(value) ? value.join(',') : value;
 	if (typeof v === 'string') {
 		try {
 			v = JSON.parse(v);
@@ -35,7 +36,16 @@ const num = (value: unknown, fallback: number) => {
 	return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
-export function readConfig(env: Env): SupertextConfig {
+/**
+ * Directus casts environment values on its own (a comma makes an array, digits a number),
+ * which breaks JSON such as `{"de-CH":"more","fr-CH":"more"}`. The raw process variables
+ * win for `SUPERTEXT_*`; Directus' parsed env (e.g. from its `.env` file) is the fallback.
+ */
+export function readConfig(directusEnv: Env, processEnv: Record<string, string | undefined> = globalThis.process?.env ?? {}): SupertextConfig {
+	const env: Env = { ...directusEnv };
+	for (const [key, value] of Object.entries(processEnv)) {
+		if (key.startsWith('SUPERTEXT_') && value !== undefined) env[key] = value;
+	}
 	const environment = String(env.SUPERTEXT_ENVIRONMENT ?? 'live').toLowerCase() as SupertextEnvironment;
 	const explicitUrl = String(env.SUPERTEXT_API_URL ?? '').trim();
 	const baseUrl = explicitUrl || SUPERTEXT_ENVIRONMENTS[environment] || SUPERTEXT_ENVIRONMENTS.live;

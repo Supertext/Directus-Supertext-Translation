@@ -6,15 +6,18 @@ A Directus 12 *bundle* extension (`package.json → directus:extension`):
 
 ```
 src/
-  endpoint/index.ts        /supertext/info, /supertext/translate (Express router, user's accountability)
+  endpoint/index.ts        /supertext/info, /supertext/translate (Express router, user's accountability),
+                           /supertext/status, /supertext/test (administrators)
   interface/               "Supertext translation" presentation interface (Vue 3) for the item form
     index.ts               definition + options (translationsField, sourceLanguage, fields)
     interface.vue          languages, replace warning, puts translations into the form (setFieldValue)
+  module/                  "Supertext" page for administrators (route /admin/supertext): configuration,
+                           languages with Supertext code and tone, Test connection
   operation/               Flow operation "Supertext: translate" (id supertext-translate-flow)
     app.ts                 options UI
     api.ts                 handler: items from options or trigger; translates and saves
   api/
-    config.ts              SUPERTEXT_* environment variables
+    config.ts              SUPERTEXT_* environment variables (raw process.env first: Directus splits values at commas)
     translator.ts          relation discovery, permission check, document per item, one request per language, save
   shared/
     codecs.ts              field value ⇄ pieces: text, HTML (block by block), markdown (line/block based)
@@ -80,7 +83,11 @@ HTTP 429 (`RATE_LIMIT_EXCEEDED`) is retried up to 4 times (`Retry-After`, else 1
 
 `POST /supertext/translate` → `{ collection, item, field, source, fields, results: [{ language, ok, values, id, created, missing, saved } | { language, ok: false, error, code }] }`
 
-Errors: `{ errors: [{ message, extensions: { code } }] }` with `unauthenticated` (401), `forbidden` (403), `missing_api_key` (503), `no_source`, `unknown_language`, `no_targets`, `no_fields`, `no_translations_field` (400).
+`GET /supertext/status` (administrators) → `{ configured, baseUrl, concurrency, timeoutSeconds, languages: [{ collection, code, name, target, politeness }] }`: every languages collection used by a translations field.
+
+`POST /supertext/test` (administrators) → `{ ok: true }` after `GET features` on the Supertext API (cost-free key check). A rejected key comes back as 502, never 401 (a 401 would sign the admin out of the app).
+
+Errors: `{ errors: [{ message, extensions: { code } }] }` with `unauthenticated` (401), `forbidden` (403; also non-admins on `/status` and `/test`), `not_configured` (400, `/test` without a key), `missing_api_key` (503), `no_source`, `unknown_language`, `no_targets`, `no_fields`, `no_translations_field` (400).
 
 ## Local setup
 
@@ -104,9 +111,11 @@ npm run test:integration # builds, then starts a real Directus 12 (SQLite) — i
 
 - `test/codecs.test.ts`: text/HTML/markdown round trips, block segmentation, tables, missing segments, field kinds.
 - `test/supertext-client.test.ts`: protocol, multipart, status/HTTP errors, 429 retries, key prefix.
+- `test/config.test.ts`: settings, including JSON values Directus has split at commas.
+- `test/demo-check.sh` (CI, needs Docker, PostgreSQL and the stand-in): starts the demo image twice, checks that the demo accounts exist exactly once and no password is logged, `/status` and `/test` as admin (403 for the editor), and translates and saves the first sample article as the editor.
 - `test/integration/directus.test.ts`: Directus 12.4 in a temp folder with the built bundle and the demo setup hook, Supertext replaced by `fake-supertext-server.ts` (prefixes `[<lang>] `). Demo setup (languages, articles, accounts, no passwords in the log), `/info`, translating without saving, structure of rich text, failed languages, unknown languages/missing source, read-only users get 403 and send nothing, saving through the parent and updating the same row, the Flow operation with a manual trigger, and translate-on-create without a loop.
 
-CI (`.github/workflows/ci.yml`): typecheck, unit and integration tests on Node 22.
+CI (`.github/workflows/ci.yml`): **test** (typecheck, unit and integration tests on Node 22) and **demo** (builds `demo/Dockerfile`, runs `test/demo-check.sh` against a PostgreSQL service and the stand-in).
 
 ## Demo (`demo/`)
 
@@ -114,6 +123,7 @@ Directus 12.4.1 (`directus/directus` image) with this bundle built in the first 
 
 - languages `en-US` (source), `de-CH`, `fr-CH`, `it-CH`;
 - collection `articles` with `status`, a Translations field (title, summary, WYSIWYG body; default language en-US; list display "translations") and the *Supertext translation* field; two English sample articles;
+- the extension's **Supertext** page in the module bar (added once; later changes by admins stay);
 - policy **Editors** (app access; CRUD on articles and their translations, read languages, revisions and activity) on role **Editor**;
 - **accounts** (demo accounts rule in `CLAUDE.md`): `DEMO_ADMIN_EMAIL`/`DEMO_ADMIN_PASSWORD` → role with an admin-access policy (created if needed); `DEMO_EDITOR_EMAIL`/`DEMO_EDITOR_PASSWORD` → Editor. Missing accounts are created, existing ones never changed; a password under 8 characters (or rejected by the project's password policy) skips the account with a warning; only variable names are logged.
 
@@ -148,7 +158,7 @@ DIRECTUS_URL=http://127.0.0.1:8055 EDITOR_EMAIL=… EDITOR_PASSWORD=… ADMIN_EM
   npm run docs:screenshots
 ```
 
-The script uses the editor for the translate screens and the admin for languages, interface options and the Flow operation (it closes the admin's license prompts with *Skip* / *Remind Later*, and creates a flow). 1280×900 at 1×, cropped.
+The script uses the editor for the translate screens and the admin for languages, interface options, the Flow operation and the Supertext page (where it shows the live API address instead of the stand-in's) (it closes the admin's license prompts with *Skip* / *Remind Later*, and creates a flow). 1280×900 at 1×, cropped.
 
 ## Releasing
 

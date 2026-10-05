@@ -49,6 +49,11 @@
           "app": "src/operation/app.ts",
           "api": "src/operation/api.ts"
         }
+      },
+      {
+        "type": "module",
+        "name": "supertext-module",
+        "source": "src/module/index.ts"
       }
     ],
     "host": "^12.0.0"

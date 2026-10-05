@@ -49,7 +49,8 @@ Lessons from testing against the live API (October 2026), to apply in every plug
 
 - `npm test` (unit), `npm run typecheck` (vue-tsc; keep TypeScript 5), `npm run test:integration` (real Directus 12 on SQLite with the demo hook). All must pass before committing.
 - `src/shared/supertext-client.ts` and `languages.ts` are shared with the Payload plugin; port fixes both ways.
-- New settings go in `src/api/config.ts` **and** the settings table in `docs/INSTALLATION.md`. Field handling lives in `src/shared/codecs.ts` (`kindForField`); keep "What is translated" in both guides in sync.
+- Before pushing a demo change: `test/demo-check.sh` (CI job **demo**: the demo image on PostgreSQL with the stand-in).
+- New settings go in `src/api/config.ts` (read them through `readConfig()`: Directus splits env values at commas) **and** the settings table in `docs/INSTALLATION.md`. Field handling lives in `src/shared/codecs.ts` (`kindForField`); keep "What is translated" in both guides in sync.
 - Rich text must keep the source's block structure (Directus 12's editor shows HTML it would serialize differently as read-only). Never rebuild markup; replace the inner HTML of leaf blocks.
 - `demo/` is the Railway demo (Dockerfile `demo/Dockerfile`, context = repo root). The demo setup hook must stay idempotent and never log passwords. Demo secrets live only in Railway variables.
-- The entry names `supertext` (endpoint), `supertext-translate` (interface) and `supertext-translate-flow` (operation) are stored in users' projects (fields, flows); renaming them is a breaking change.
+- The entry names `supertext` (endpoint), `supertext-translate` (interface), `supertext-translate-flow` (operation) and the module id `supertext` (module bar) are stored in users' projects (fields, flows); renaming them is a breaking change.

@@ -5,6 +5,7 @@
  * - "articles" with a translations field (title, summary, body) and the
  *   "Translate with Supertext" field, plus two English sample articles
  * - "Editor" role + policy: app access, articles in every language, the Supertext endpoint
+ * - the extension's "Supertext" module in the module bar (custom modules start hidden)
  * - accounts from DEMO_ADMIN_EMAIL/PASSWORD (administrator) and
  *   DEMO_EDITOR_EMAIL/PASSWORD (editor); existing accounts are never changed
  *
@@ -208,9 +209,36 @@ async function setup({ services, getSchema, logger, env }) {
 	}
 	const adminRole = await ensureAdminRole({ services, ctx, logger });
 
+	await showSupertextModule({ services, ctx, logger });
+
 	// --- Accounts ---------------------------------------------------------------------------
 	await ensureUser({ services, ctx, logger, env, prefix: 'DEMO_ADMIN', role: adminRole?.id, label: 'administrator' });
 	await ensureUser({ services, ctx, logger, env, prefix: 'DEMO_EDITOR', role: editorRole.id, label: 'editor' });
+}
+
+/** Directus 12's default module bar; used when the project hasn't customised it yet. */
+const DEFAULT_MODULE_BAR = [
+	{ type: 'module', id: 'content', enabled: true },
+	{ type: 'module', id: 'visual', enabled: false },
+	{ type: 'module', id: 'users', enabled: true },
+	{ type: 'module', id: 'files', enabled: true },
+	{ type: 'module', id: 'insights', enabled: true },
+	{ type: 'module', id: 'flows', enabled: true },
+	{ type: 'module', id: 'deployments', enabled: false },
+	{ type: 'link', id: 'docs', enabled: true, name: '$t:documentation', icon: 'help', url: 'https://directus.com/docs' },
+	{ type: 'module', id: 'settings', enabled: true, locked: true },
+];
+
+/** Adds the Supertext module (Settings → Settings → Module Bar) once; later changes by admins stay. */
+async function showSupertextModule({ services, ctx, logger }) {
+	const settings = new services.SettingsService(await ctx());
+	const current = (await settings.readSingleton({ fields: ['module_bar'] }))?.module_bar;
+	const bar = Array.isArray(current) ? [...current] : DEFAULT_MODULE_BAR.map((item) => ({ ...item }));
+	if (bar.some((item) => item.id === 'supertext')) return;
+	const before = bar.findIndex((item) => item.id === 'docs' || item.id === 'settings');
+	bar.splice(before === -1 ? bar.length : before, 0, { type: 'module', id: 'supertext', enabled: true });
+	await settings.upsertSingleton({ module_bar: bar });
+	logger.info('[demo-setup] Added the Supertext module to the module bar.');
 }
 
 /** A role with an admin-access policy (bootstrap creates one only when it creates the first user). */

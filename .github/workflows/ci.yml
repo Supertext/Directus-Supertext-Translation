@@ -19,3 +19,29 @@ jobs:
       - run: npm test
       - name: Integration tests (real Directus 12 on SQLite)
         run: npm run test:integration
+
+  demo:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the demo image
+        run: docker build -f demo/Dockerfile -t supertext-directus-demo .
+      - name: Start the stand-in API
+        run: node test/docs/stand-in.mjs > stand-in.log 2>&1 &
+      - name: Start the demo twice, check accounts and admin endpoints, translate as the editor
+        env:
+          PG_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: test/demo-check.sh
+      - if: failure()
+        run: docker logs demo 2>&1 | tail -100; cat stand-in.log

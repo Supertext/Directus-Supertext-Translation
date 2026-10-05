@@ -8,6 +8,7 @@ AI translation for [Directus](https://directus.io) 12 by [Supertext](https://www
 - Text, rich text (formatting, links and structure kept, stays editable) and markdown
 - Respects Directus permissions; nothing is saved until the editor clicks *Save*
 - Flow operation for bulk and automatic translation
+- A *Supertext* page for administrators with the configuration and a connection test
 
 **Live demo:** <https://directus-production-349f.up.railway.app/admin> (credentials from the Supertext team)
 

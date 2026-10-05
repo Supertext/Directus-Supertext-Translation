@@ -49,6 +49,16 @@ Settings are environment variables of the Directus server (`.env` or container v
 | `SUPERTEXT_POLL_INTERVAL` | `2` | Seconds between status checks while Supertext translates. |
 | `SUPERTEXT_TIMEOUT` | `180` | Maximum seconds to wait for one language. |
 
+JSON values can be written as they are, commas included (Directus would normally split a value at its commas; the extension reads these variables unsplit).
+
+### The Supertext page
+
+The bundle adds a **Supertext** page for administrators: whether a key is set, which API is used, how many languages run at a time, the timeout, every language of your translations fields with the Supertext code and tone it is sent with, and a **Test connection** button (a cost-free call to the Supertext API that checks the key).
+
+Directus hides new modules until they're switched on: *Settings → Settings → Module Bar*, enable **Supertext**. Only administrators see it.
+
+![The Supertext page: API key set, live API address, languages at a time, timeout, Test connection with "Connected. The API key works." and the language table with Supertext codes and tone](images/09-supertext-module.png)
+
 ## Language setup
 
 The plugin uses Directus's own translations model. If your collections are already translated with a **Translations** field, there is nothing to change.
@@ -122,14 +132,16 @@ npm: `npm update directus-extension-supertext-translation`; from the repository:
 
 ## Uninstall
 
-Delete the *Supertext translation* fields from your collections and any flows using the operation, then remove the extension folder (or `npm uninstall`) and restart. Translations stay as they are; the plugin keeps no data of its own.
+Delete the *Supertext translation* fields from your collections and any flows using the operation, remove *Supertext* from the module bar, then remove the extension folder (or `npm uninstall`) and restart. Translations stay as they are; the plugin keeps no data of its own.
 
 ## Troubleshooting
 
 | Symptom | Cause / fix |
 | --- | --- |
 | No *Supertext translation* interface when creating a field | The extension isn't loaded: check the Directus log for `Loaded extensions` / `Couldn't register bundle`, and that `dist/` was copied. |
-| "No Supertext API key is configured" | Set `SUPERTEXT_API_KEY` and restart Directus. |
+| "No Supertext API key is configured" | Set `SUPERTEXT_API_KEY` and restart Directus. *Test connection* on the Supertext page checks it. |
+| No *Supertext* page in the module bar | Enable it under *Settings → Settings → Module Bar* (administrators only). |
+| A JSON setting has no effect | Check it on the Supertext page (language table). The value must be a JSON object, e.g. `{"de-CH":"more","fr-CH":"more"}`. |
 | "Save the item first, then translate it" | New items need to be saved once. |
 | "There is no en-US text to translate" | The source language has no saved text; fill in and save it, or pick another source. |
 | "You are not allowed to edit this item." | The user lacks update permission on the item (see [Permissions](#permissions)). |

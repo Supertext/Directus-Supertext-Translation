@@ -146,5 +146,17 @@ await admin.goto(`${B}/admin/settings/flows/${flow.data.id}/${op.data.id}`);
 await admin.waitForTimeout(2500);
 await shot(admin.locator('.v-drawer, [role=dialog]').last(), '08-flow-operation.png');
 
+// The Supertext module: configuration, Test connection, languages.
+await admin.goto(`${B}/admin/supertext`);
+await dismissPrompts(admin);
+await admin.getByRole('button', { name: 'Test connection' }).click();
+await admin.getByText('Connected. The API key works.').waitFor();
+// The docs run against the stand-in; show the address users will see.
+await admin.evaluate(() => {
+	const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+	for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.textContent.includes('127.0.0.1')) n.textContent = 'https://api.supertext.com/v1/';
+});
+await admin.screenshot({ path: out + '09-supertext-module.png', clip: { x: 0, y: 0, width: 960, height: 600 } });
+
 await browser.close();
 console.log(`Saved screenshots to ${out}`);

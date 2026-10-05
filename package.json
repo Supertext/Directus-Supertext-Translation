@@ -1,0 +1,73 @@
+{
+  "name": "directus-extension-supertext-translation",
+  "version": "0.1.0",
+  "description": "Supertext AI translation for Directus: translate items' Translations field with one click",
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build -w --no-minify",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "docs:screenshots": "node tests/docs/screenshots.mjs",
+    "stand-in": "node tests/docs/stand-in.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Supertext/Directus-Supertext-Translation.git"
+  },
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-extension-bundle",
+    "translation",
+    "supertext",
+    "i18n"
+  ],
+  "author": "Supertext AG",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Supertext/Directus-Supertext-Translation/issues"
+  },
+  "homepage": "https://github.com/Supertext/Directus-Supertext-Translation#readme",
+  "devDependencies": {
+    "@directus/extensions-sdk": "^18.0.5",
+    "@directus/types": "^17.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3",
+    "vue": "^3.5.24"
+  },
+  "dependencies": {
+    "node-html-parser": "^6.1.13"
+  },
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "directus:extension": {
+    "type": "bundle",
+    "path": {
+      "app": "dist/app.js",
+      "api": "dist/api.js"
+    },
+    "entries": [
+      {
+        "type": "endpoint",
+        "name": "supertext",
+        "source": "src/endpoint/index.ts"
+      },
+      {
+        "type": "interface",
+        "name": "supertext-translate",
+        "source": "src/interface/index.ts"
+      },
+      {
+        "type": "module",
+        "name": "supertext-module",
+        "source": "src/module/index.ts"
+      }
+    ],
+    "host": "^11.0.0 || ^12.0.0"
+  }
+}

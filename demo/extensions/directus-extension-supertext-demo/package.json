@@ -1,0 +1,13 @@
+{
+  "name": "directus-extension-supertext-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo only: creates the demo accounts, languages, Article collection and sample content on every start",
+  "type": "module",
+  "directus:extension": {
+    "type": "hook",
+    "path": "index.js",
+    "source": "index.js",
+    "host": "^11.0.0 || ^12.0.0"
+  }
+}

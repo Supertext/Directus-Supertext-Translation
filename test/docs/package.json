@@ -1,0 +1,9 @@
+{
+  "name": "directus-supertext-docs-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Regenerates docs/images from the demo (see docs/DEVELOPER.md)",
+  "dependencies": {
+    "playwright": "^1.56.0"
+  }
+}

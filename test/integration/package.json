@@ -1,0 +1,8 @@
+{
+  "name": "directus-supertext-integration-tests",
+  "private": true,
+  "description": "A real Directus for the integration tests (see docs/DEVELOPER.md)",
+  "dependencies": {
+    "directus": "12.4.1"
+  }
+}

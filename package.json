@@ -1,0 +1,81 @@
+{
+  "name": "directus-extension-supertext-translation",
+  "version": "0.1.0",
+  "description": "Supertext AI translation for Directus translations fields: a translate button in the item form and a Flow operation",
+  "license": "MIT",
+  "author": "Supertext AG",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Supertext/Directus-Supertext-Translation.git"
+  },
+  "homepage": "https://github.com/Supertext/Directus-Supertext-Translation#readme",
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-extension-bundle",
+    "translation",
+    "localization",
+    "supertext",
+    "ai"
+  ],
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "directus:extension": {
+    "type": "bundle",
+    "path": {
+      "app": "dist/app.js",
+      "api": "dist/api.js"
+    },
+    "entries": [
+      {
+        "type": "endpoint",
+        "name": "supertext",
+        "source": "src/endpoint/index.ts"
+      },
+      {
+        "type": "interface",
+        "name": "supertext-translate",
+        "source": "src/interface/index.ts"
+      },
+      {
+        "type": "operation",
+        "name": "supertext-translate-flow",
+        "source": {
+          "app": "src/operation/app.ts",
+          "api": "src/operation/api.ts"
+        }
+      }
+    ],
+    "host": "^12.0.0"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build -w --no-minify",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest",
+    "test:integration": "npm --prefix test/integration install --no-audit --no-fund && npm run build && vitest run --project integration",
+    "test:all": "npm test && npm run test:integration",
+    "docs:screenshots": "npm --prefix test/docs install --no-audit --no-fund && node test/docs/screenshots.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^18.0.5",
+    "@types/node": "^26.6.4",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3",
+    "vue": "^3.5.24",
+    "vue-tsc": "^3.3.12"
+  },
+  "dependencies": {
+    "marked": "^18.1.0",
+    "node-html-parser": "^9.0.4"
+  }
+}

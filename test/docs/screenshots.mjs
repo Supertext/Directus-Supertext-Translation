@@ -1,0 +1,150 @@
+#!/usr/bin/env node
+/**
+ * Regenerates docs/images/*.png from a fresh demo (no translations yet) whose
+ * SUPERTEXT_API_URL points at the stand-in API (stand-in.mjs). See docs/DEVELOPER.md.
+ *
+ *   DIRECTUS_URL=http://127.0.0.1:8055 \
+ *   EDITOR_EMAIL=… EDITOR_PASSWORD=… ADMIN_EMAIL=… ADMIN_PASSWORD=… node screenshots.mjs
+ */
+import { chromium } from 'playwright';
+import { fileURLToPath } from 'node:url';
+
+const B = process.env.DIRECTUS_URL ?? 'http://127.0.0.1:8055';
+const out = fileURLToPath(new URL('../../docs/images/', import.meta.url));
+const need = (name) => process.env[name] ?? (() => { throw new Error(`Set ${name}`); })();
+
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+
+async function session(email, password) {
+	const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, locale: 'en-US' });
+	await page.goto(`${B}/admin/login`);
+	await page.fill('input[type=email]', email);
+	await page.fill('input[type=password]', password);
+	await page.click('button[type=submit]');
+	await page.waitForURL(/admin\/(?!login)/);
+	return page;
+}
+
+/** Admin-only first-login prompts (license key, project owner): close them without choosing. */
+async function dismissPrompts(page) {
+	for (let i = 0; i < 3; i++) {
+		await page.waitForTimeout(800);
+		const skip = page.getByRole('button', { name: /^(Skip|Remind Later)$/ });
+		if (!(await skip.count())) return;
+		await skip.first().click();
+	}
+}
+
+const shot = (locator, name, pad = 12) =>
+	locator.screenshot({ path: out + name, animations: 'disabled' }).catch(async () => {
+		throw new Error(`Screenshot ${name} failed`);
+	});
+
+/** Clip from the top of `top` to the bottom of `bottom` (same column), with padding. */
+async function clip(page, top, bottom, name, pad = 16) {
+	const a = await top.boundingBox();
+	const b = await bottom.boundingBox();
+	await page.screenshot({
+		path: out + name,
+		fullPage: true,
+		clip: { x: a.x - pad, y: a.y - pad, width: Math.max(a.width, b.width) + 2 * pad, height: b.y + b.height - a.y + 2 * pad },
+	});
+}
+
+/** The form field whose label is exactly `label`. */
+const field = (page, label) => page.locator('.field').filter({ has: page.getByText(label, { exact: true }) }).last();
+
+/** A collection page: its title bar and the table. */
+async function listShot(page, name) {
+	const table = page.locator('.layout-tabular').first();
+	await table.waitFor();
+	await page.waitForTimeout(500);
+	const t = await table.boundingBox();
+	await page.screenshot({ path: out + name, clip: { x: t.x - 1, y: 0, width: t.width + 2, height: t.y + t.height + 12 } });
+}
+
+const pickLanguage = async (page, name) => {
+	await page.locator('.field').filter({ has: page.locator('text=Translations') }).getByText('English', { exact: true }).first().click();
+	await page.waitForTimeout(400);
+	await page.locator('.v-list-item, [role=menuitem], li').filter({ hasText: name }).first().click();
+	await page.waitForTimeout(800);
+};
+
+// --- Editor -------------------------------------------------------------------------------
+const editor = await session(need('EDITOR_EMAIL'), need('EDITOR_PASSWORD'));
+await editor.goto(`${B}/admin/content/articles/1`);
+const box = editor.locator('.supertext');
+await box.locator('.targets').waitFor();
+await shot(box, '01-translate-box.png');
+
+await box.getByRole('button', { name: 'Translate' }).click();
+await box.locator('.result').first().waitFor({ timeout: 60_000 });
+await editor.waitForTimeout(500);
+await clip(editor, box, field(editor, 'Translations'), '02-translated-form.png');
+
+await pickLanguage(editor, 'Deutsch');
+{
+	// The app scrolls inside its main panel, so bring the field to the top of the viewport.
+	await field(editor, 'Translations').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+	await editor.waitForTimeout(400);
+	const t = await field(editor, 'Translations').boundingBox();
+	const vh = editor.viewportSize().height;
+	await editor.screenshot({ path: out + '03-german-result.png', clip: { x: t.x - 16, y: Math.max(0, t.y - 16), width: t.width + 32, height: Math.min(780, vh - Math.max(0, t.y - 16)) } });
+}
+
+await editor.keyboard.press('Control+s');
+await editor.waitForTimeout(2500);
+await editor.goto(`${B}/admin/content/articles/1`);
+await box.locator('.targets').waitFor();
+await editor.waitForTimeout(500);
+await box.getByRole('button', { name: 'Translate' }).click();
+const dialog = editor.locator('#dialog-outlet .v-card').filter({ hasText: 'Replace existing translations' });
+await dialog.waitFor();
+await editor.waitForTimeout(400);
+await shot(dialog, '04-replace-warning.png');
+await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+await editor.goto(`${B}/admin/content/articles`);
+await listShot(editor, '05-articles.png');
+
+// --- Administrator ------------------------------------------------------------------------
+const admin = await session(need('ADMIN_EMAIL'), need('ADMIN_PASSWORD'));
+await dismissPrompts(admin);
+
+await admin.goto(`${B}/admin/content/languages`);
+await dismissPrompts(admin);
+await listShot(admin, '06-languages.png');
+
+await admin.goto(`${B}/admin/settings/data-model/articles/supertext`);
+await admin.waitForTimeout(2000);
+await dismissPrompts(admin);
+await admin.getByText('Interface', { exact: true }).first().click();
+const options = admin.getByText('Translations field', { exact: true }).first();
+await options.waitFor();
+await options.scrollIntoViewIfNeeded();
+await admin.waitForTimeout(500);
+{
+	const top = await options.boundingBox();
+	const end = await admin.getByText('Fields to translate', { exact: true }).first().boundingBox();
+	await admin.screenshot({ path: out + '07-interface-options.png', clip: { x: top.x - 24, y: top.y - 24, width: 900, height: end.y - top.y + 124 } });
+}
+
+// A flow with the operation, to show its settings.
+const token = await admin.evaluate(async (base) => {
+	const r = await fetch(`${base}/auth/refresh`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'session' }) });
+	return (await r.json()).data?.access_token ?? null;
+}, B);
+const api = (method, path, body) =>
+	admin.evaluate(async ({ base, method, path, body, token }) => {
+		const r = await fetch(base + path, { method, credentials: 'include', headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
+		return r.json();
+	}, { base: B, method, path, body, token });
+const flow = await api('POST', '/flows', { name: 'Translate with Supertext', icon: 'translate', status: 'active', trigger: 'manual', accountability: 'all', options: { collections: ['articles'], location: 'both', async: false } });
+const op = await api('POST', '/operations', { flow: flow.data.id, key: 'supertext', name: 'Supertext: translate', type: 'supertext-translate-flow', position_x: 19, position_y: 1, options: { source: 'en-US', onlyMissing: false } });
+await api('PATCH', `/flows/${flow.data.id}`, { operation: op.data.id });
+await admin.goto(`${B}/admin/settings/flows/${flow.data.id}/${op.data.id}`);
+await admin.waitForTimeout(2500);
+await shot(admin.locator('.v-drawer, [role=dialog]').last(), '08-flow-operation.png');
+
+await browser.close();
+console.log(`Saved screenshots to ${out}`);

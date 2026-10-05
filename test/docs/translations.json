@@ -1,0 +1,47 @@
+{
+  "de-CH": {
+    "Content that speaks every language": "Inhalte, die jede Sprache sprechen",
+    "How Supertext translates your Directus content while keeping its structure.": "Wie Supertext Ihre Directus-Inhalte übersetzt und dabei ihre Struktur beibehält.",
+    "Translate in one click": "Mit einem Klick übersetzen",
+    "Open an article, choose the languages and click <strong>Translate</strong>. The translations appear in the form, so you can <em>review them</em> before you save.": "Öffnen Sie einen Artikel, wählen Sie die Sprachen und klicken Sie auf <strong>Übersetzen</strong>. Die Übersetzungen erscheinen im Formular, sodass Sie sie <em>prüfen können</em>, bevor Sie speichern.",
+    "Titles and summaries": "Titel und Zusammenfassungen",
+    "Rich text with formatting and <a href=\"https://www.supertext.com\">links</a>": "Formatierter Text mit Hervorhebungen und <a href=\"https://www.supertext.com\">Links</a>",
+    "Markdown fields": "Markdown-Felder",
+    "Every language gets its own translation row, exactly as if an editor had typed it.": "Jede Sprache erhält ihre eigene Übersetzungszeile, genau so, als hätte eine Redaktorin sie eingetippt.",
+    "About Supertext": "Über Supertext",
+    "A Swiss language company combining AI translation with expert linguists.": "Ein Schweizer Sprachunternehmen, das KI-Übersetzung mit erfahrenen Sprachprofis verbindet.",
+    "We are a Swiss language company. Our team combines AI translation with linguists who know your market &amp; your customers.": "Wir sind ein Schweizer Sprachunternehmen. Unser Team verbindet KI-Übersetzung mit Sprachprofis, die Ihren Markt &amp; Ihre Kundschaft kennen.",
+    "Good translation is invisible: readers simply understand.": "Gute Übersetzung ist unsichtbar: Die Leserinnen und Leser verstehen einfach.",
+    "Questions? Write to <a href=\"mailto:hello@supertext.com\">hello@supertext.com</a>.": "Fragen? Schreiben Sie an <a href=\"mailto:hello@supertext.com\">hello@supertext.com</a>."
+  },
+  "fr-CH": {
+    "Content that speaks every language": "Des contenus qui parlent toutes les langues",
+    "How Supertext translates your Directus content while keeping its structure.": "Comment Supertext traduit vos contenus Directus tout en conservant leur structure.",
+    "Translate in one click": "Traduire en un clic",
+    "Open an article, choose the languages and click <strong>Translate</strong>. The translations appear in the form, so you can <em>review them</em> before you save.": "Ouvrez un article, choisissez les langues et cliquez sur <strong>Traduire</strong>. Les traductions apparaissent dans le formulaire: vous pouvez les <em>vérifier</em> avant d’enregistrer.",
+    "Titles and summaries": "Titres et résumés",
+    "Rich text with formatting and <a href=\"https://www.supertext.com\">links</a>": "Texte enrichi avec mise en forme et <a href=\"https://www.supertext.com\">liens</a>",
+    "Markdown fields": "Champs Markdown",
+    "Every language gets its own translation row, exactly as if an editor had typed it.": "Chaque langue reçoit sa propre ligne de traduction, exactement comme si une rédactrice l’avait saisie.",
+    "About Supertext": "À propos de Supertext",
+    "A Swiss language company combining AI translation with expert linguists.": "Une entreprise linguistique suisse qui associe traduction par IA et linguistes expérimentés.",
+    "We are a Swiss language company. Our team combines AI translation with linguists who know your market &amp; your customers.": "Nous sommes une entreprise linguistique suisse. Notre équipe associe la traduction par IA à des linguistes qui connaissent votre marché &amp; votre clientèle.",
+    "Good translation is invisible: readers simply understand.": "Une bonne traduction est invisible: le lectorat comprend, tout simplement.",
+    "Questions? Write to <a href=\"mailto:hello@supertext.com\">hello@supertext.com</a>.": "Des questions? Écrivez à <a href=\"mailto:hello@supertext.com\">hello@supertext.com</a>."
+  },
+  "it-CH": {
+    "Content that speaks every language": "Contenuti che parlano ogni lingua",
+    "How Supertext translates your Directus content while keeping its structure.": "Come Supertext traduce i vostri contenuti Directus mantenendone la struttura.",
+    "Translate in one click": "Tradurre con un clic",
+    "Open an article, choose the languages and click <strong>Translate</strong>. The translations appear in the form, so you can <em>review them</em> before you save.": "Aprite un articolo, scegliete le lingue e cliccate su <strong>Traduci</strong>. Le traduzioni compaiono nel modulo, così potete <em>verificarle</em> prima di salvare.",
+    "Titles and summaries": "Titoli e riassunti",
+    "Rich text with formatting and <a href=\"https://www.supertext.com\">links</a>": "Testo formattato con evidenziazioni e <a href=\"https://www.supertext.com\">link</a>",
+    "Markdown fields": "Campi Markdown",
+    "Every language gets its own translation row, exactly as if an editor had typed it.": "Ogni lingua riceve la propria riga di traduzione, esattamente come se l’avesse digitata una redattrice.",
+    "About Supertext": "Chi è Supertext",
+    "A Swiss language company combining AI translation with expert linguists.": "Un’azienda linguistica svizzera che unisce traduzione IA e linguisti esperti.",
+    "We are a Swiss language company. Our team combines AI translation with linguists who know your market &amp; your customers.": "Siamo un’azienda linguistica svizzera. Il nostro team unisce la traduzione IA a linguisti che conoscono il vostro mercato &amp; la vostra clientela.",
+    "Good translation is invisible: readers simply understand.": "Una buona traduzione è invisibile: chi legge semplicemente capisce.",
+    "Questions? Write to <a href=\"mailto:hello@supertext.com\">hello@supertext.com</a>.": "Domande? Scrivete a <a href=\"mailto:hello@supertext.com\">hello@supertext.com</a>."
+  }
+}

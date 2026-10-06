@@ -17,6 +17,10 @@
 					<dt>{{ t.timeout }}</dt>
 					<dd>{{ status.timeoutSeconds }} s</dd>
 				</dl>
+				<p class="hint key-help">
+					{{ t.noAccount }} <a :href="signupUrl" target="_blank" rel="noopener">{{ t.createAccount }}</a>.
+					{{ t.generateKey }} <a :href="apiKeyUrl" target="_blank" rel="noopener">{{ t.keyPath }}</a> {{ t.adminRole }}
+				</p>
 				<div class="test">
 					<v-button secondary :loading="testing" @click="test">{{ t.test }}</v-button>
 					<span v-if="tested === true" class="ok"><v-icon name="check" small /> {{ t.ok }}</span>
@@ -52,6 +56,8 @@ const en = {
 	test: 'Test connection', ok: 'Connected. The API key works.', languages: 'Languages',
 	languagesHint: 'The languages of your translations fields, as they are sent to Supertext. Change them with SUPERTEXT_LANGUAGE_MAP and SUPERTEXT_POLITENESS.',
 	noLanguages: 'No collection has a translations field yet.',
+	noAccount: 'No Supertext account yet?', createAccount: 'Create one at supertext.com',
+	generateKey: 'Generate your API key at', keyPath: 'supertext.com → Integrations → API', adminRole: '(requires the Admin role), then set it as SUPERTEXT_API_KEY.',
 	language: 'Language', supertext: 'Supertext language', tone: 'Tone', formal: 'Formal (Sie, vous)', informal: 'Informal (du, tu)', default: 'Default',
 };
 const de: typeof en = {
@@ -60,8 +66,12 @@ const de: typeof en = {
 	test: 'Verbindung testen', ok: 'Verbunden. Der API-Schlüssel funktioniert.', languages: 'Sprachen',
 	languagesHint: 'Die Sprachen Ihrer Übersetzungsfelder, so wie sie an Supertext gesendet werden. Ändern lässt sich das mit SUPERTEXT_LANGUAGE_MAP und SUPERTEXT_POLITENESS.',
 	noLanguages: 'Noch keine Sammlung hat ein Übersetzungsfeld.',
+	noAccount: 'Noch kein Supertext-Konto?', createAccount: 'Erstellen Sie eines auf supertext.com',
+	generateKey: 'Den API-Schlüssel erzeugen Sie unter', keyPath: 'supertext.com → Integrations → API', adminRole: '(erfordert die Admin-Rolle) und setzen ihn als SUPERTEXT_API_KEY.',
 	language: 'Sprache', supertext: 'Supertext-Sprache', tone: 'Anrede', formal: 'Formell (Sie, vous)', informal: 'Informell (du, tu)', default: 'Standard',
 };
+const signupUrl = 'https://www.supertext.com/person/en/account/signin';
+const apiKeyUrl = 'https://www.supertext.com/en/integrations/api';
 const t = (document.documentElement.lang || 'en').toLowerCase().startsWith('de') ? de : en;
 
 const api = useApi();
@@ -101,6 +111,7 @@ dd { margin: 0; }
 .ok { color: var(--theme--success); }
 .fail { color: var(--theme--danger); }
 .hint { color: var(--theme--foreground-subdued); margin: 0; }
+.hint a { color: var(--theme--primary); }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--theme--border-color-subdued); }
 th { color: var(--theme--foreground-subdued); font-weight: 600; }

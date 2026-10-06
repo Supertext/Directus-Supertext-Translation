@@ -12,6 +12,10 @@ AI translation for [Directus](https://directus.io) 12 by [Supertext](https://www
 
 **Live demo:** <https://directus-production-349f.up.railway.app/admin> (credentials from the Supertext team)
 
+## Requirements
+
+Directus 12 and a Supertext API key. No Supertext account yet? [Create one at supertext.com](https://www.supertext.com/person/en/account/signin). Generate your API key at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (requires the Admin role) and set it as `SUPERTEXT_API_KEY`. Details in the [Installation guide](docs/INSTALLATION.md#supertext-account-and-api-key).
+
 ## Guides
 
 - [Installation guide](docs/INSTALLATION.md): requirements, install, API key, languages, permissions, Flows, settings, troubleshooting

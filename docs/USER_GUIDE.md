@@ -60,7 +60,7 @@ In Directus, each item has one **translation per language** in its *Translations
 | *The … text has unsaved changes.* | Save first: Supertext translates the saved text. |
 | *There is no … text to translate.* | The source language is empty; choose another one or fill it in. |
 | *Some text kept the source because Supertext returned it empty* | Check the named fields. |
-| *No Supertext API key is configured.* | Ask your administrator. |
+| *No Supertext API key is configured.* | Ask your administrator (setup: [Supertext account and API key](INSTALLATION.md#supertext-account-and-api-key)). |
 | *You are not allowed to edit this item.* | You can't translate items you can't edit. |
 | *Authentication failure* / *limit is exceeded* | Supertext account problem; ask your administrator. |
 | *Timed out waiting…* | Try again, or translate fewer languages at once. |

@@ -74,7 +74,7 @@ export default defineEndpoint({
 			try {
 				requireAdmin(req);
 				const config = readConfig(env);
-				if (!config.apiKey) throw new TranslateError('No Supertext API key is configured (SUPERTEXT_API_KEY).', 400, 'not_configured');
+				if (!config.apiKey) throw new TranslateError('No Supertext API key is configured (SUPERTEXT_API_KEY). Generate one at https://www.supertext.com/en/integrations/api (requires the Admin role).', 400, 'not_configured');
 				try {
 					await new SupertextClient({ apiKey: config.apiKey, baseUrl: config.baseUrl }).validateApiKey();
 				} catch (error) {

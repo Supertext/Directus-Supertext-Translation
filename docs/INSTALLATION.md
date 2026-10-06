@@ -10,7 +10,7 @@ For administrators who set up a Directus project. Editors: see the [User guide](
 | Node.js | 22 or newer (as required by Directus 12) |
 | Database | Any database Directus supports (tested with PostgreSQL and SQLite) |
 | Multilingual content | Directus's standard setup: a languages collection and a **Translations** field on each collection to translate (see [Language setup](#language-setup)) |
-| Supertext | An API key with access to AI translation (<https://www.supertext.com/en/integrations/api>) |
+| Supertext | A Supertext account and an API key with access to AI translation (see [Supertext account and API key](#supertext-account-and-api-key)) |
 
 The Directus server must reach `https://api.supertext.com` over HTTPS.
 
@@ -36,6 +36,14 @@ Restart Directus. The log shows `Loaded extensions: … directus-extension-super
 
 ## API key and settings
 
+### Supertext account and API key
+
+1. No Supertext account yet? Create one (or log in) at <https://www.supertext.com/person/en/account/signin>: enter your e-mail address and follow the link Supertext sends you.
+2. Generate your API key at *supertext.com → Integrations → API*: <https://www.supertext.com/en/integrations/api>. This requires the **Admin** role in your Supertext account; otherwise ask a Supertext admin of your company.
+3. Set the key as `SUPERTEXT_API_KEY` (below) and restart Directus. The Supertext page shows both links too, and *Test connection* checks the key.
+
+### Settings
+
 Settings are environment variables of the Directus server (`.env` or container variables). Never commit the key.
 
 | Variable | Default | Description |
@@ -53,7 +61,7 @@ JSON values can be written as they are, commas included (Directus would normally
 
 ### The Supertext page
 
-The bundle adds a **Supertext** page for administrators: whether a key is set, which API is used, how many languages run at a time, the timeout, every language of your translations fields with the Supertext code and tone it is sent with, and a **Test connection** button (a cost-free call to the Supertext API that checks the key).
+The bundle adds a **Supertext** page for administrators: whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, every language of your translations fields with the Supertext code and tone it is sent with, and a **Test connection** button (a cost-free call to the Supertext API that checks the key).
 
 Directus hides new modules until they're switched on: *Settings → Settings → Module Bar*, enable **Supertext**. Only administrators see it.
 
@@ -139,13 +147,13 @@ Delete the *Supertext translation* fields from your collections and any flows us
 | Symptom | Cause / fix |
 | --- | --- |
 | No *Supertext translation* interface when creating a field | The extension isn't loaded: check the Directus log for `Loaded extensions` / `Couldn't register bundle`, and that `dist/` was copied. |
-| "No Supertext API key is configured" | Set `SUPERTEXT_API_KEY` and restart Directus. *Test connection* on the Supertext page checks it. |
+| "No Supertext API key is configured" | Set `SUPERTEXT_API_KEY` and restart Directus. No key yet: see [Supertext account and API key](#supertext-account-and-api-key). *Test connection* on the Supertext page checks it. |
 | No *Supertext* page in the module bar | Enable it under *Settings → Settings → Module Bar* (administrators only). |
 | A JSON setting has no effect | Check it on the Supertext page (language table). The value must be a JSON object, e.g. `{"de-CH":"more","fr-CH":"more"}`. |
 | "Save the item first, then translate it" | New items need to be saved once. |
 | "There is no en-US text to translate" | The source language has no saved text; fill in and save it, or pick another source. |
 | "You are not allowed to edit this item." | The user lacks update permission on the item (see [Permissions](#permissions)). |
-| "Authentication failure" | Wrong key, or a key for another environment (`live` vs `staging`). |
+| "Authentication failure" | Wrong key, or a key for another environment (`live` vs `staging`). Generate a new one at <https://www.supertext.com/en/integrations/api> (Admin role required). |
 | "Too many requests to Supertext" | Rate limit; requests are retried automatically. Lower `SUPERTEXT_CONCURRENCY` if it persists. |
 | "Your Supertext translation limit is exceeded" | The Supertext subscription quota is used up. |
 | `INVALID_LANGUAGE_PAIR` in the error | A language code Supertext doesn't know; add a `SUPERTEXT_LANGUAGE_MAP` entry. |

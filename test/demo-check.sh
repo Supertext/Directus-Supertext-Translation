@@ -23,8 +23,9 @@ login() { curl -sf $B/auth/login -H 'content-type: application/json' -d "{\"emai
 
 start
 start   # second start: nothing duplicated or changed
-docker logs demo 2>&1 | grep -q 'Account from DEMO_EDITOR_EMAIL exists, left unchanged'
-if docker logs demo 2>&1 | grep -qF -e "$DEMO_ADMIN_PASSWORD" -e "$DEMO_EDITOR_PASSWORD"; then echo "A password appeared in the log"; exit 1; fi
+docker logs demo 2>&1 | grep > /dev/null 'Account from DEMO_EDITOR_EMAIL exists, left unchanged'
+logs=$(docker logs demo 2>&1)
+if grep -qF -e "$DEMO_ADMIN_PASSWORD" -e "$DEMO_EDITOR_PASSWORD" <<< "$logs"; then echo "A password appeared in the log"; exit 1; fi
 
 ADMIN=$(login "$DEMO_ADMIN_EMAIL" "$DEMO_ADMIN_PASSWORD")
 curl -sfg "$B/users?fields=email&limit=-1" -H "Authorization: Bearer $ADMIN" | python3 -c '
@@ -32,7 +33,7 @@ import sys, json
 emails = sorted(u["email"] for u in json.load(sys.stdin)["data"])
 print(emails)
 assert emails == ["ci-admin@example.com", "ci-editor@example.com"], emails'
-curl -sf -XPOST $B/supertext/test -H "Authorization: Bearer $ADMIN" | grep -q '"ok":true'
+curl -sf -XPOST $B/supertext/test -H "Authorization: Bearer $ADMIN" | grep > /dev/null '"ok":true'
 curl -sf $B/supertext/status -H "Authorization: Bearer $ADMIN" | python3 -c '
 import sys, json
 d = json.load(sys.stdin)["data"]

@@ -8,6 +8,11 @@
 			<template v-if="status">
 				<h2 class="type-title">{{ t.connection }}</h2>
 				<dl>
+					<dt>{{ t.version }}</dt>
+					<dd>
+						<a v-if="releaseUrl(status.version)" :href="releaseUrl(status.version)!" target="_blank" rel="noopener">{{ status.version }}</a>
+						<template v-else>{{ status.version || t.unknown }}</template>
+					</dd>
 					<dt>{{ t.apiKey }}</dt>
 					<dd>{{ status.configured ? t.keySet : t.keyMissing }}</dd>
 					<dt>{{ t.api }}</dt>
@@ -51,7 +56,7 @@ import { onMounted, ref } from 'vue';
 import { useApi } from '@directus/extensions-sdk';
 
 const en = {
-	connection: 'Connection', apiKey: 'API key', keySet: 'Set (SUPERTEXT_API_KEY)', keyMissing: 'Missing: set SUPERTEXT_API_KEY',
+	connection: 'Connection', version: 'Plugin version', unknown: 'unknown', apiKey: 'API key', keySet: 'Set (SUPERTEXT_API_KEY)', keyMissing: 'Missing: set SUPERTEXT_API_KEY',
 	api: 'API', parallel: 'Languages at a time', timeout: 'Timeout per language',
 	test: 'Test connection', ok: 'Connected. The API key works.', languages: 'Languages',
 	languagesHint: 'The languages of your translations fields, as they are sent to Supertext. Change them with SUPERTEXT_LANGUAGE_MAP and SUPERTEXT_POLITENESS.',
@@ -61,7 +66,7 @@ const en = {
 	language: 'Language', supertext: 'Supertext language', tone: 'Tone', formal: 'Formal (Sie, vous)', informal: 'Informal (du, tu)', default: 'Default',
 };
 const de: typeof en = {
-	connection: 'Verbindung', apiKey: 'API-Schlüssel', keySet: 'Gesetzt (SUPERTEXT_API_KEY)', keyMissing: 'Fehlt: SUPERTEXT_API_KEY setzen',
+	connection: 'Verbindung', version: 'Plugin-Version', unknown: 'unbekannt', apiKey: 'API-Schlüssel', keySet: 'Gesetzt (SUPERTEXT_API_KEY)', keyMissing: 'Fehlt: SUPERTEXT_API_KEY setzen',
 	api: 'API', parallel: 'Sprachen gleichzeitig', timeout: 'Zeitlimit pro Sprache',
 	test: 'Verbindung testen', ok: 'Verbunden. Der API-Schlüssel funktioniert.', languages: 'Sprachen',
 	languagesHint: 'Die Sprachen Ihrer Übersetzungsfelder, so wie sie an Supertext gesendet werden. Ändern lässt sich das mit SUPERTEXT_LANGUAGE_MAP und SUPERTEXT_POLITENESS.',
@@ -72,6 +77,8 @@ const de: typeof en = {
 };
 const signupUrl = 'https://www.supertext.com/person/en/account/signin';
 const apiKeyUrl = 'https://www.supertext.com/en/integrations/api';
+/** GitHub release page for a release version (X.Y.Z). */
+const releaseUrl = (v: unknown) => (typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v) ? `https://github.com/Supertext/Directus-Supertext-Translation/releases/tag/v${v}` : null);
 const t = (document.documentElement.lang || 'en').toLowerCase().startsWith('de') ? de : en;
 
 const api = useApi();
@@ -111,7 +118,7 @@ dd { margin: 0; }
 .ok { color: var(--theme--success); }
 .fail { color: var(--theme--danger); }
 .hint { color: var(--theme--foreground-subdued); margin: 0; }
-.hint a { color: var(--theme--primary); }
+.hint a, dd a { color: var(--theme--primary); }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--theme--border-color-subdued); }
 th { color: var(--theme--foreground-subdued); font-weight: 600; }

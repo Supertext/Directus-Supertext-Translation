@@ -61,11 +61,11 @@ JSON values can be written as they are, commas included (Directus would normally
 
 ### The Supertext page
 
-The bundle adds a **Supertext** page for administrators: whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, every language of your translations fields with the Supertext code and tone it is sent with, and a **Test connection** button (a cost-free call to the Supertext API that checks the key).
+The bundle adds a **Supertext** page for administrators: the installed plugin version (linked to its release notes on GitHub), whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, every language of your translations fields with the Supertext code and tone it is sent with, and a **Test connection** button (a cost-free call to the Supertext API that checks the key).
 
 Directus hides new modules until they're switched on: *Settings → Settings → Module Bar*, enable **Supertext**. Only administrators see it.
 
-![The Supertext page: API key set, live API address, languages at a time, timeout, Test connection with "Connected. The API key works." and the language table with Supertext codes and tone](images/09-supertext-module.png)
+![The Supertext page: plugin version, API key set, live API address, languages at a time, timeout, Test connection with "Connected. The API key works." and the language table with Supertext codes and tone](images/09-supertext-module.png)
 
 ## Language setup
 

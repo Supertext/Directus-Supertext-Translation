@@ -3,11 +3,12 @@ import { readConfig } from '../api/config.js';
 import { findTranslationsRelation, loadItem, translateItem, TranslateError } from '../api/translator.js';
 import { SupertextClient, SupertextError } from '../shared/supertext-client.js';
 import { politenessFor, targetCode } from '../shared/languages.js';
+import { extensionVersion } from '../api/version.js';
 
 /**
  * /supertext/info       GET  ?collection=&item=&field=   languages, fields, whether a key is set
  * /supertext/translate  POST { collection, item, field?, source?, targets?, fields?, save? }
- * /supertext/status     GET  configuration and languages (admins; the Supertext module)
+ * /supertext/status     GET  version, configuration and languages (admins; the Supertext module)
  * /supertext/test       POST cost-free check of the API key (admins)
  *
  * Both run with the signed-in user's permissions. `save` defaults to false: the item
@@ -58,6 +59,7 @@ export default defineEndpoint({
 				}
 				res.json({
 					data: {
+						version: extensionVersion(),
 						configured: config.apiKey !== '',
 						baseUrl: config.baseUrl,
 						concurrency: config.concurrency,

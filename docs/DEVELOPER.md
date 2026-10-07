@@ -11,7 +11,7 @@ src/
   interface/               "Supertext translation" presentation interface (Vue 3) for the item form
     index.ts               definition + options (translationsField, sourceLanguage, fields)
     interface.vue          languages, replace warning, puts translations into the form (setFieldValue)
-  module/                  "Supertext" page for administrators (route /admin/supertext): configuration,
+  module/                  "Supertext" page for administrators (route /admin/supertext): version, configuration,
                            languages with Supertext code and tone, Test connection
   operation/               Flow operation "Supertext: translate" (id supertext-translate-flow)
     app.ts                 options UI
@@ -19,6 +19,7 @@ src/
   api/
     config.ts              SUPERTEXT_* environment variables (raw process.env first: Directus splits values at commas)
     translator.ts          relation discovery, permission check, document per item, one request per language, save
+    version.ts             extension version, read at runtime from package.json
   shared/
     codecs.ts              field value ⇄ pieces: text, HTML (block by block), markdown (line/block based)
     document.ts            HTML document with data-st-id elements; parse the response
@@ -83,7 +84,7 @@ HTTP 429 (`RATE_LIMIT_EXCEEDED`) is retried up to 4 times (`Retry-After`, else 1
 
 `POST /supertext/translate` → `{ collection, item, field, source, fields, results: [{ language, ok, values, id, created, missing, saved } | { language, ok: false, error, code }] }`
 
-`GET /supertext/status` (administrators) → `{ configured, baseUrl, concurrency, timeoutSeconds, languages: [{ collection, code, name, target, politeness }] }`: every languages collection used by a translations field.
+`GET /supertext/status` (administrators) → `{ version, configured, baseUrl, concurrency, timeoutSeconds, languages: [{ collection, code, name, target, politeness }] }`: `version` is read at runtime from the extension's `package.json` (`src/api/version.ts`, looking upwards from `dist/api.js`; `null` if not found; the page links an `X.Y.Z` version to its GitHub release). `languages` covers every languages collection used by a translations field.
 
 `POST /supertext/test` (administrators) → `{ ok: true }` after `GET features` on the Supertext API (cost-free key check). A rejected key comes back as 502, never 401 (a 401 would sign the admin out of the app).
 
@@ -112,6 +113,7 @@ npm run test:integration # builds, then starts a real Directus 12 (SQLite) — i
 - `test/codecs.test.ts`: text/HTML/markdown round trips, block segmentation, tables, missing segments, field kinds.
 - `test/supertext-client.test.ts`: protocol, multipart, status/HTTP errors, 429 retries, key prefix.
 - `test/config.test.ts`: settings, including JSON values Directus has split at commas.
+- `test/endpoint.test.ts`: `/status` returns the version from `package.json` and refuses non-admins.
 - `test/demo-check.sh` (CI, needs Docker, PostgreSQL and the stand-in): starts the demo image twice, checks that the demo accounts exist exactly once and no password is logged, `/status` and `/test` as admin (403 for the editor), and translates and saves the first sample article as the editor.
 - `test/integration/directus.test.ts`: Directus 12.4 in a temp folder with the built bundle and the demo setup hook, Supertext replaced by `fake-supertext-server.ts` (prefixes `[<lang>] `). Demo setup (languages, articles, accounts, no passwords in the log), `/info`, translating without saving, structure of rich text, failed languages, unknown languages/missing source, read-only users get 403 and send nothing, saving through the parent and updating the same row, the Flow operation with a manual trigger, and translate-on-create without a loop.
 

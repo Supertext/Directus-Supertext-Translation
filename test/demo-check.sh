@@ -38,6 +38,7 @@ curl -sf $B/supertext/status -H "Authorization: Bearer $ADMIN" | python3 -c '
 import sys, json
 d = json.load(sys.stdin)["data"]
 assert d["configured"] and d["baseUrl"] == "http://127.0.0.1:8765/v1/", d
+assert d["version"] == json.load(open("package.json"))["version"], d
 tones = {l["code"]: l["politeness"] for l in d["languages"]}
 assert tones["de-CH"] == "more" and tones["it-CH"] == "more", tones   # JSON with commas survives
 print("status OK")'

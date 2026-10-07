@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+
+- The Supertext page shows the plugin version (from `package.json`), linked to its release on GitHub; `/supertext/status` returns it as `version`.
+
 ## [0.1.0] - 2026-10-07
 
 ### Added

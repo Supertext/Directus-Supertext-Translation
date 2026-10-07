@@ -162,10 +162,15 @@ The script uses the editor for the translate screens and the admin for languages
 
 ## Releasing
 
-1. Move *Unreleased* in `CHANGELOG.md` under the new version; bump `version` in `package.json`.
-2. `npm run build && npm test && npm run test:integration`.
-3. Tag `vX.Y.Z`, push, `npm publish` (keywords include `directus-extension` for the Marketplace).
+Releases are published by `.github/workflows/release.yml` when the version is officially bumped; nobody tags or creates releases by hand.
 
+1. Check that `npm run build && npm test && npm run test:integration` pass.
+2. Move the *Unreleased* entries in `CHANGELOG.md` under a new `## [X.Y.Z] - YYYY-MM-DD` section, and keep an empty *Unreleased* above it.
+3. Set the same version in:
+   - `package.json`: the npm package version
+4. Push to `main`. The workflow checks that the version files match `CHANGELOG.md`, then tags `vX.Y.Z` and creates the GitHub release with the CHANGELOG section as notes (0.x versions as pre-releases). A push that adds no new version does nothing, and a version that is already released is skipped. After fixing a failed run, start it again with *Run workflow* on the *Release* workflow.
+
+Publishing to npm stays manual: `npm publish` after the release (the `directus-extension` keyword lists it in the Marketplace).
 ## Known limitations / roadmap
 
 - Runs in the request; very long items and many languages can take a while (`SUPERTEXT_TIMEOUT`). Next: run in the background with progress.

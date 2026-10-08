@@ -6,42 +6,42 @@
 		<div class="supertext-module">
 			<v-notice v-if="error" type="danger">{{ error }}</v-notice>
 			<template v-if="status">
-				<h2 class="type-title">{{ t.connection }}</h2>
+				<h2 class="type-title">{{ t('module.connection') }}</h2>
 				<dl>
-					<dt>{{ t.version }}</dt>
+					<dt>{{ t('module.version') }}</dt>
 					<dd>
 						<a v-if="releaseUrl(status.version)" :href="releaseUrl(status.version)!" target="_blank" rel="noopener">{{ status.version }}</a>
-						<template v-else>{{ status.version || t.unknown }}</template>
+						<template v-else>{{ status.version || t('module.unknown') }}</template>
 					</dd>
-					<dt>{{ t.apiKey }}</dt>
-					<dd>{{ status.configured ? t.keySet : t.keyMissing }}</dd>
-					<dt>{{ t.api }}</dt>
+					<dt>{{ t('module.apiKey') }}</dt>
+					<dd>{{ status.configured ? t('module.keySet') : t('module.keyMissing') }}</dd>
+					<dt>{{ t('module.api') }}</dt>
 					<dd><code>{{ status.baseUrl }}</code></dd>
-					<dt>{{ t.parallel }}</dt>
+					<dt>{{ t('module.parallel') }}</dt>
 					<dd>{{ status.concurrency }}</dd>
-					<dt>{{ t.timeout }}</dt>
+					<dt>{{ t('module.timeout') }}</dt>
 					<dd>{{ status.timeoutSeconds }} s</dd>
 				</dl>
 				<p class="hint key-help">
-					{{ t.noAccount }} <a :href="signupUrl" target="_blank" rel="noopener">{{ t.createAccount }}</a>.
-					{{ t.generateKey }} <a :href="apiKeyUrl" target="_blank" rel="noopener">{{ t.keyPath }}</a> {{ t.adminRole }}
+					{{ t('module.noAccount') }} <a :href="signupUrl" target="_blank" rel="noopener">{{ t('module.createAccount') }}</a>.
+					{{ t('module.generateKey') }} <a :href="apiKeyUrl" target="_blank" rel="noopener">{{ t('module.keyPath') }}</a> {{ t('module.adminRole') }}
 				</p>
 				<div class="test">
-					<v-button secondary :loading="testing" @click="test">{{ t.test }}</v-button>
-					<span v-if="tested === true" class="ok"><v-icon name="check" small /> {{ t.ok }}</span>
+					<v-button secondary :loading="testing" @click="test">{{ t('module.test') }}</v-button>
+					<span v-if="tested === true" class="ok"><v-icon name="check" small /> {{ t('module.ok') }}</span>
 					<span v-else-if="tested" class="fail"><v-icon name="error" small /> {{ tested }}</span>
 				</div>
 
-				<h2 class="type-title">{{ t.languages }}</h2>
-				<p class="hint">{{ t.languagesHint }}</p>
-				<p v-if="!status.languages.length" class="hint">{{ t.noLanguages }}</p>
+				<h2 class="type-title">{{ t('module.languages') }}</h2>
+				<p class="hint">{{ t('module.languagesHint') }}</p>
+				<p v-if="!status.languages.length" class="hint">{{ t('module.noLanguages') }}</p>
 				<table v-else>
-					<thead><tr><th>{{ t.language }}</th><th>{{ t.supertext }}</th><th>{{ t.tone }}</th></tr></thead>
+					<thead><tr><th>{{ t('module.language') }}</th><th>{{ t('module.supertext') }}</th><th>{{ t('module.tone') }}</th></tr></thead>
 					<tbody>
 						<tr v-for="l in status.languages" :key="l.collection + l.code">
 							<td>{{ l.name }} <code>{{ l.code }}</code></td>
 							<td><code>{{ l.target }}</code></td>
-							<td>{{ l.politeness === 'more' ? t.formal : l.politeness === 'less' ? t.informal : t.default }}</td>
+							<td>{{ l.politeness === 'more' ? t('module.formal') : l.politeness === 'less' ? t('module.informal') : t('module.default') }}</td>
 						</tr>
 					</tbody>
 				</table>
@@ -54,32 +54,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useApi } from '@directus/extensions-sdk';
+import { apiErrorText, t } from '../i18n/index.js';
 
-const en = {
-	connection: 'Connection', version: 'Plugin version', unknown: 'unknown', apiKey: 'API key', keySet: 'Set (SUPERTEXT_API_KEY)', keyMissing: 'Missing: set SUPERTEXT_API_KEY',
-	api: 'API', parallel: 'Languages at a time', timeout: 'Timeout per language',
-	test: 'Test connection', ok: 'Connected. The API key works.', languages: 'Languages',
-	languagesHint: 'The languages of your translations fields, as they are sent to Supertext. Change them with SUPERTEXT_LANGUAGE_MAP and SUPERTEXT_POLITENESS.',
-	noLanguages: 'No collection has a translations field yet.',
-	noAccount: 'No Supertext account yet?', createAccount: 'Create one at supertext.com',
-	generateKey: 'Generate your API key at', keyPath: 'supertext.com → Integrations → API', adminRole: '(requires the Admin role), then set it as SUPERTEXT_API_KEY.',
-	language: 'Language', supertext: 'Supertext language', tone: 'Tone', formal: 'Formal (Sie, vous)', informal: 'Informal (du, tu)', default: 'Default',
-};
-const de: typeof en = {
-	connection: 'Verbindung', version: 'Plugin-Version', unknown: 'unbekannt', apiKey: 'API-Schlüssel', keySet: 'Gesetzt (SUPERTEXT_API_KEY)', keyMissing: 'Fehlt: SUPERTEXT_API_KEY setzen',
-	api: 'API', parallel: 'Sprachen gleichzeitig', timeout: 'Zeitlimit pro Sprache',
-	test: 'Verbindung testen', ok: 'Verbunden. Der API-Schlüssel funktioniert.', languages: 'Sprachen',
-	languagesHint: 'Die Sprachen Ihrer Übersetzungsfelder, so wie sie an Supertext gesendet werden. Ändern lässt sich das mit SUPERTEXT_LANGUAGE_MAP und SUPERTEXT_POLITENESS.',
-	noLanguages: 'Noch keine Sammlung hat ein Übersetzungsfeld.',
-	noAccount: 'Noch kein Supertext-Konto?', createAccount: 'Erstellen Sie eines auf supertext.com',
-	generateKey: 'Den API-Schlüssel erzeugen Sie unter', keyPath: 'supertext.com → Integrations → API', adminRole: '(erfordert die Admin-Rolle) und setzen ihn als SUPERTEXT_API_KEY.',
-	language: 'Sprache', supertext: 'Supertext-Sprache', tone: 'Anrede', formal: 'Formell (Sie, vous)', informal: 'Informell (du, tu)', default: 'Standard',
-};
 const signupUrl = 'https://www.supertext.com/person/en/account/signin';
 const apiKeyUrl = 'https://www.supertext.com/en/integrations/api';
 /** GitHub release page for a release version (X.Y.Z). */
 const releaseUrl = (v: unknown) => (typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v) ? `https://github.com/Supertext/Directus-Supertext-Translation/releases/tag/v${v}` : null);
-const t = (document.documentElement.lang || 'en').toLowerCase().startsWith('de') ? de : en;
 
 const api = useApi();
 const status = ref<any>(null);
@@ -91,7 +71,7 @@ onMounted(async () => {
 	try {
 		status.value = (await api.get('/supertext/status')).data.data;
 	} catch (e: any) {
-		error.value = e?.response?.data?.errors?.[0]?.message ?? String(e);
+		error.value = apiErrorText(e);
 	}
 });
 
@@ -102,7 +82,7 @@ async function test() {
 		await api.post('/supertext/test');
 		tested.value = true;
 	} catch (e: any) {
-		tested.value = e?.response?.data?.errors?.[0]?.message ?? String(e);
+		tested.value = apiErrorText(e);
 	} finally {
 		testing.value = false;
 	}

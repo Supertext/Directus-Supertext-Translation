@@ -1,6 +1,6 @@
 # User guide
 
-For editors working in the Directus app.
+For editors working in the Directus app. The Supertext box and its messages follow your Directus language (English, German, French or Italian; change it in your user profile under *Language*).
 
 In Directus, each item has one **translation per language** in its *Translations* field. Supertext translates the text of one language into the others and fills them into the form. You review the result and save it, as if you had typed it.
 

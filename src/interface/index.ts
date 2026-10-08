@@ -1,35 +1,41 @@
 import { defineInterface } from '@directus/extensions-sdk';
+import { t } from '../i18n/index.js';
 import InterfaceComponent from './interface.vue';
 
 export default defineInterface({
 	id: 'supertext-translate',
-	name: 'Supertext translation',
+	// Getters and the options function are read when Directus renders them, so they follow the user's language.
+	get name() {
+		return t('interface.name');
+	},
 	icon: 'translate',
-	description: 'A "Translate with Supertext" box for the translations field of this collection.',
+	get description() {
+		return t('interface.description');
+	},
 	component: InterfaceComponent,
 	types: ['alias'],
 	localTypes: ['presentation'],
 	group: 'presentation',
 	hideLabel: true,
 	hideLoader: true,
-	options: [
+	options: () => [
 		{
 			field: 'translationsField',
-			name: 'Translations field',
+			name: t('interface.translationsField'),
 			type: 'string',
-			meta: { width: 'half', interface: 'input', options: { placeholder: 'translations' }, note: 'Only needed if the collection has more than one translations field.' },
+			meta: { width: 'half', interface: 'input', options: { placeholder: 'translations' }, note: t('interface.translationsFieldNote') },
 		},
 		{
 			field: 'sourceLanguage',
-			name: 'Translate from',
+			name: t('interface.sourceLanguage'),
 			type: 'string',
-			meta: { width: 'half', interface: 'input', options: { placeholder: 'en-US' }, note: 'Language code preselected as the source.' },
+			meta: { width: 'half', interface: 'input', options: { placeholder: 'en-US' }, note: t('interface.sourceLanguageNote') },
 		},
 		{
 			field: 'fields',
-			name: 'Fields to translate',
+			name: t('interface.fields'),
 			type: 'json',
-			meta: { width: 'full', interface: 'tags', note: 'Fields of the translations collection. Empty: all text, rich text and markdown fields.' },
+			meta: { width: 'full', interface: 'tags', note: t('interface.fieldsNote') },
 		},
 	],
 });

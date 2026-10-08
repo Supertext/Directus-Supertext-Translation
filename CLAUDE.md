@@ -23,6 +23,10 @@ Everywhere an administrator enters or is told about the API key — the settings
 
 Wording: "No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role)." In the UI, links open in a new tab (`target="_blank" rel="noopener"`); where the CMS shows plain text only, use the bare URLs. New screens or messages that mention the key get the links too.
 
+## UI languages (always)
+
+The plugin's own UI (buttons, panels, dialogs, settings, permissions, messages) is available in English, German, French and Italian through the CMS's own translation mechanism, so it follows the user's back-end language. New or changed strings get all four languages in the same commit. Formal address (Sie, vous, Lei), the CMS's own terms in each language, "Supertext", placeholders and URLs never translated.
+
 ## Plugin list (always)
 
 `README.md` ends with the shared list of all Supertext plugins (between the `<!-- supertext-plugins:start -->` and `<!-- supertext-plugins:end -->` markers). It is identical in every Supertext plugin repo: when a plugin is added, renamed or its description changes, update the list in **all** repos, not just this one.
@@ -78,6 +82,7 @@ Lessons from testing against the live API (October 2026), to apply in every plug
 
 - `npm test` (unit), `npm run typecheck` (vue-tsc; keep TypeScript 5), `npm run test:integration` (real Directus 12 on SQLite with the demo hook). All must pass before committing.
 - `src/shared/supertext-client.ts` and `languages.ts` are shared with the Payload plugin; port fixes both ways.
+- UI strings live in `src/i18n/messages.ts` (English, German, French, Italian; Directus has no extension i18n API); add every new string in all four. API errors stay English and carry a `key` for the app.
 - Before pushing a demo change: `test/demo-check.sh` (CI job **demo**: the demo image on PostgreSQL with the stand-in).
 - New settings go in `src/api/config.ts` (read them through `readConfig()`: Directus splits env values at commas) **and** the settings table in `docs/INSTALLATION.md`. Field handling lives in `src/shared/codecs.ts` (`kindForField`); keep "What is translated" in both guides in sync.
 - Rich text must keep the source's block structure (Directus 12's editor shows HTML it would serialize differently as read-only). Never rebuild markup; replace the inner HTML of leaf blocks.

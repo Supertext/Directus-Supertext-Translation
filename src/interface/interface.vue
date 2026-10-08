@@ -2,57 +2,57 @@
 	<div class="supertext">
 		<div class="head">
 			<v-icon name="translate" />
-			<span class="title">Translate with Supertext</span>
+			<span class="title">{{ t('panel.title') }}</span>
 		</div>
 
 		<v-notice v-if="error" type="danger">{{ error }}</v-notice>
-		<v-notice v-else-if="isNew" type="info">Save the item first, then translate it.</v-notice>
-		<v-notice v-else-if="info && !info.configured" type="warning">No Supertext API key is configured. Ask your administrator to set SUPERTEXT_API_KEY.</v-notice>
+		<v-notice v-else-if="isNew" type="info">{{ t('panel.saveFirst') }}</v-notice>
+		<v-notice v-else-if="info && !info.configured" type="warning">{{ t('panel.noKey') }}</v-notice>
 
 		<template v-if="info && !isNew">
 			<div class="row">
-				<span class="label">From</span>
+				<span class="label">{{ t('panel.from') }}</span>
 				<v-select v-model="source" :items="sourceChoices" :disabled="busy || disabled" class="source" />
 			</div>
 
-			<div class="label">Into</div>
+			<div class="label">{{ t('panel.into') }}</div>
 			<div class="targets">
 				<div v-for="lang in targetLanguages" :key="lang.code" class="target">
 					<v-checkbox v-model="selected" :value="lang.code" :label="`${lang.name} (${lang.code})`" :disabled="busy || disabled" />
-					<span v-if="lang.hasTranslation" class="existing">has text — will be replaced</span>
+					<span v-if="lang.hasTranslation" class="existing">{{ t('panel.willReplace') }}</span>
 				</div>
 			</div>
 
 			<v-notice v-if="sourceHasUnsavedEdits" type="warning">
-				The {{ source }} text has unsaved changes. Supertext translates the saved text, so save first.
+				{{ t('panel.unsavedSource', { language: source }) }}
 			</v-notice>
 
 			<div class="actions">
 				<v-button :loading="busy" :disabled="!canTranslate" @click="start">
 					<v-icon name="translate" left />
-					Translate
+					{{ t('panel.translate') }}
 				</v-button>
-				<span v-if="busy" class="hint">Supertext is translating {{ selected.length }} language(s)…</span>
+				<span v-if="busy" class="hint">{{ t('panel.translating', { count: selected.length }) }}</span>
 			</div>
 
 			<v-notice v-if="done.length" type="success" class="result">
-				Translated into {{ done.join(', ') }}. Review the translations below, then click Save.
+				{{ t('panel.done', { languages: done.join(', ') }) }}
 			</v-notice>
 			<v-notice v-for="f in failed" :key="f.language" type="danger" class="result">{{ f.language }}: {{ f.error }}</v-notice>
 			<v-notice v-if="incomplete.length" type="warning" class="result">
-				Some text kept the source because Supertext returned it empty: {{ incomplete.join('; ') }}. Check those fields.
+				{{ t('panel.incomplete', { list: incomplete.join('; ') }) }}
 			</v-notice>
 		</template>
 
 		<v-dialog v-model="confirming" @esc="confirming = false">
 			<v-card>
-				<v-card-title>Replace existing translations?</v-card-title>
+				<v-card-title>{{ t('panel.replaceTitle') }}</v-card-title>
 				<v-card-text>
-					{{ replacing.join(', ') }} already {{ replacing.length === 1 ? 'has' : 'have' }} text. Supertext replaces the translated fields in the form. Nothing is saved until you click Save, and saved versions stay in the revision history.
+					{{ t(replacing.length === 1 ? 'panel.replaceText' : 'panel.replaceTextMany', { languages: replacing.join(', ') }) }}
 				</v-card-text>
 				<v-card-actions>
-					<v-button secondary @click="confirming = false">Cancel</v-button>
-					<v-button @click="run">Replace</v-button>
+					<v-button secondary @click="confirming = false">{{ t('panel.cancel') }}</v-button>
+					<v-button @click="run">{{ t('panel.replace') }}</v-button>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
@@ -62,13 +62,14 @@
 <script setup lang="ts">
 import { useApi } from '@directus/extensions-sdk';
 import { computed, inject, onMounted, ref, watch, type Ref } from 'vue';
+import { apiErrorText, errorText, t } from '../i18n/index.js';
 
 type Language = { code: string; name: string; hasTranslation: boolean; id: string | number | null };
 type Relation = { field: string; junctionPk: string; languageFk: string; languagePk: string };
 type Info = { configured: boolean; relation: Relation; defaultSource: string | null; fields: { field: string }[]; languages: Language[] };
 type Result =
 	| { language: string; ok: true; values: Record<string, string>; id: string | number | null; missing: string[] }
-	| { language: string; ok: false; error: string };
+	| { language: string; ok: false; error: string; code?: string; key?: string; values?: Record<string, string | number> };
 type Edits = { create: Record<string, any>[]; update: Record<string, any>[]; delete: (string | number)[] };
 
 const props = withDefaults(
@@ -141,7 +142,7 @@ async function load() {
 		source.value = preferred;
 		selected.value = langs.filter((l) => l.code !== preferred).map((l) => l.code);
 	} catch (e) {
-		error.value = message(e);
+		error.value = apiErrorText(e);
 	}
 }
 
@@ -170,10 +171,12 @@ async function run() {
 		applyToForm(results);
 		const name = (code: string) => info.value?.languages.find((l) => l.code === code)?.name ?? code;
 		done.value = results.filter((r) => r.ok).map((r) => name(r.language));
-		failed.value = results.filter((r): r is Extract<Result, { ok: false }> => !r.ok).map((r) => ({ language: name(r.language), error: r.error }));
+		failed.value = results
+			.filter((r): r is Extract<Result, { ok: false }> => !r.ok)
+			.map((r) => ({ language: name(r.language), error: errorText({ message: r.error, code: r.code, key: r.key, values: r.values }) }));
 		incomplete.value = results.filter((r): r is Extract<Result, { ok: true }> => r.ok && r.missing.length > 0).map((r) => `${name(r.language)}: ${r.missing.join(', ')}`);
 	} catch (e) {
-		error.value = message(e);
+		error.value = apiErrorText(e);
 	} finally {
 		busy.value = false;
 	}
@@ -203,11 +206,6 @@ function applyToForm(results: Result[]) {
 		}
 	}
 	emit('setFieldValue', { field: field.value, value: edits });
-}
-
-function message(e: unknown): string {
-	const err = e as any;
-	return err?.response?.data?.errors?.[0]?.message ?? err?.message ?? String(e);
 }
 </script>
 

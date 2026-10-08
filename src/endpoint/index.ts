@@ -18,7 +18,9 @@ export default defineEndpoint({
 	id: 'supertext',
 	handler: (router, { services, getSchema, env, logger }) => {
 		const fail = (res: any, error: unknown) => {
-			if (error instanceof TranslateError) return res.status(error.status).json({ errors: [{ message: error.message, extensions: { code: error.code } }] });
+			if (error instanceof TranslateError) {
+				return res.status(error.status).json({ errors: [{ message: error.message, extensions: { code: error.code, key: error.key, values: error.values } }] });
+			}
 			const e = error as any;
 			const status = typeof e?.status === 'number' ? e.status : 500;
 			if (status >= 500) logger.error(`[supertext] ${e?.stack ?? e}`);
@@ -31,7 +33,7 @@ export default defineEndpoint({
 
 		const requireAdmin = (req: any) => {
 			requireUser(req);
-			if (!req.accountability.admin) throw new TranslateError('Only administrators can do this.', 403, 'forbidden');
+			if (!req.accountability.admin) throw new TranslateError('Only administrators can do this.', 403, 'forbidden', {}, 'error.admin_only');
 		};
 
 		router.get('/status', async (req: any, res: any) => {
@@ -76,12 +78,16 @@ export default defineEndpoint({
 			try {
 				requireAdmin(req);
 				const config = readConfig(env);
-				if (!config.apiKey) throw new TranslateError('No Supertext API key is configured (SUPERTEXT_API_KEY). Generate one at https://www.supertext.com/en/integrations/api (requires the Admin role).', 400, 'not_configured');
+				if (!config.apiKey) throw new TranslateError(
+						'No Supertext API key is configured (SUPERTEXT_API_KEY). No Supertext account yet? Create one at https://www.supertext.com/person/en/account/signin. Generate your API key at https://www.supertext.com/en/integrations/api (supertext.com → Integrations → API; requires the Admin role).',
+						400,
+						'not_configured',
+					);
 				try {
 					await new SupertextClient({ apiKey: config.apiKey, baseUrl: config.baseUrl }).validateApiKey();
 				} catch (error) {
 					// Supertext's own 401/403 must not reach the app as a Directus 401 (that signs the admin out).
-					if (error instanceof SupertextError) throw new TranslateError(error.message, 502, error.code);
+					if (error instanceof SupertextError) throw TranslateError.fromSupertext(error);
 					throw error;
 				}
 				res.json({ data: { ok: true } });

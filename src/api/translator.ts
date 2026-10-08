@@ -9,17 +9,38 @@ import type { SupertextConfig } from './config.js';
 type Services = Record<string, any>;
 type PrimaryKey = string | number;
 
-/** A user-facing problem (bad request, nothing to translate, …). */
+type Values = Record<string, string | number>;
+
+/**
+ * A user-facing problem (bad request, nothing to translate, …). `message` is English;
+ * the app shows `key` (a message of src/i18n, default `error.<code>`) with `values`
+ * in the user's language.
+ */
 export class TranslateError extends Error {
+	readonly key: string;
+
 	constructor(
 		message: string,
 		readonly status = 400,
 		readonly code = 'invalid_request',
+		readonly values: Values = {},
+		key?: string,
 	) {
 		super(message);
 		this.name = 'TranslateError';
+		this.key = key ?? `error.${code}`;
+	}
+
+	/** Wraps a Supertext API error; the app translates it as `supertext.<code>`. */
+	static fromSupertext(error: SupertextError, status = 502): TranslateError {
+		return new TranslateError(error.message, status, error.code, supertextValues(error), `supertext.${error.code}`);
 	}
 }
+
+const supertextValues = (error: SupertextError): Values => ({
+	...(error.status ? { status: error.status } : {}),
+	...(error.detail ? { detail: error.detail } : {}),
+});
 
 /** How a translations field is wired: parent ← junction → languages. */
 export type TranslationsRelation = {
@@ -34,7 +55,7 @@ export type TranslationsRelation = {
 };
 
 export function findTranslationsRelation(schema: SchemaOverview, collection: string, field?: string): TranslationsRelation {
-	if (!schema.collections[collection]) throw new TranslateError(`Collection "${collection}" does not exist.`, 404, 'not_found');
+	if (!schema.collections[collection]) throw new TranslateError(`Collection "${collection}" does not exist.`, 404, 'not_found', { collection });
 	const candidates = schema.relations.filter(
 		(r) => r.related_collection === collection && r.meta?.one_field && r.meta?.junction_field && (!field || r.meta.one_field === field),
 	);
@@ -54,7 +75,9 @@ export function findTranslationsRelation(schema: SchemaOverview, collection: str
 			languagePk: schema.collections[langRel.related_collection]!.primary,
 		};
 	}
-	throw new TranslateError(field ? `"${collection}.${field}" is not a translations field.` : `"${collection}" has no translations field.`, 400, 'no_translations_field');
+	throw field
+		? new TranslateError(`"${collection}.${field}" is not a translations field.`, 400, 'no_translations_field', { collection, field }, 'error.not_translations_field')
+		: new TranslateError(`"${collection}" has no translations field.`, 400, 'no_translations_field', { collection });
 }
 
 export type TranslatableField = { field: string; kind: FieldKind };
@@ -115,7 +138,7 @@ const isFilled = (v: unknown) => typeof v === 'string' && v.trim() !== '';
 
 export type LanguageResult =
 	| { language: string; ok: true; values: Record<string, string>; id: PrimaryKey | null; created: boolean; missing: string[]; saved: boolean }
-	| { language: string; ok: false; error: string; code: string };
+	| { language: string; ok: false; error: string; code: string; key: string; values: Values };
 
 export type TranslateResult = {
 	collection: string;
@@ -161,18 +184,18 @@ export async function translateItem(args: TranslateArgs): Promise<TranslateResul
 
 	const data = await loadItem(services, schema, accountability, args.collection, args.item, args.field, args.fields);
 	const { relation, fields, languages, rows } = data;
-	if (!fields.length) throw new TranslateError(`"${relation.junction}" has no text fields to translate.`, 400, 'no_fields');
+	if (!fields.length) throw new TranslateError(`"${relation.junction}" has no text fields to translate.`, 400, 'no_fields', { collection: relation.junction });
 
 	const known = new Set(languages.map((l) => l.code));
 	const source = args.source || data.defaultSource || undefined;
-	if (!source || !known.has(source)) throw new TranslateError(`Unknown source language "${source ?? ''}".`, 400, 'unknown_language');
+	if (!source || !known.has(source)) throw new TranslateError(`Unknown source language "${source ?? ''}".`, 400, 'unknown_language', { language: source ?? '' }, 'error.unknown_source');
 	const sourceRow = rows[source];
 	if (!sourceRow || !fields.some((f) => isFilled(sourceRow[f.field]))) {
-		throw new TranslateError(`There is no ${source} text to translate. Fill in and save the ${source} translation first.`, 400, 'no_source');
+		throw new TranslateError(`There is no ${source} text to translate. Fill in and save the ${source} translation first.`, 400, 'no_source', { language: source });
 	}
 	let targets = (args.targets?.length ? args.targets : languages.map((l) => l.code)).filter((t) => t !== source);
 	const unknown = targets.filter((t) => !known.has(t));
-	if (unknown.length) throw new TranslateError(`Unknown language(s): ${unknown.join(', ')}.`, 400, 'unknown_language');
+	if (unknown.length) throw new TranslateError(`Unknown language(s): ${unknown.join(', ')}.`, 400, 'unknown_language', { languages: unknown.join(', ') });
 	if (!targets.length) throw new TranslateError('Choose at least one language to translate into.', 400, 'no_targets');
 	if (args.onlyMissing) {
 		const done = new Set(languages.filter((l) => l.hasTranslation).map((l) => l.code));
@@ -219,7 +242,9 @@ export async function translateItem(args: TranslateArgs): Promise<TranslateResul
 			const row = rows[language];
 			return { language, ok: true, values, id: row ? (row[relation.junctionPk] as PrimaryKey) : null, created: !row, missing, saved: false };
 		} catch (error) {
-			if (error instanceof SupertextError) return { language, ok: false, error: error.message, code: error.code };
+			if (error instanceof SupertextError) {
+				return { language, ok: false, error: error.message, code: error.code, key: `supertext.${error.code}`, values: supertextValues(error) };
+			}
 			throw error;
 		}
 	};
@@ -239,7 +264,8 @@ export async function translateItem(args: TranslateArgs): Promise<TranslateResul
 				r.saved = true;
 			} catch (error: any) {
 				const index = results.indexOf(r);
-				results[index] = { language: r.language, ok: false, error: `Translated but not saved: ${error?.message ?? error}`, code: 'save_failed' };
+				const detail = String(error?.message ?? error);
+				results[index] = { language: r.language, ok: false, error: `Translated but not saved: ${detail}`, code: 'save_failed', key: 'error.save_failed', values: { detail } };
 			}
 		}
 	}

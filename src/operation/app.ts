@@ -1,58 +1,64 @@
 import { defineOperationApp } from '@directus/extensions-sdk';
+import { t } from '../i18n/index.js';
 
 export default defineOperationApp({
 	id: 'supertext-translate-flow',
-	name: 'Supertext: translate',
+	// Getters and functions are read when Directus renders them, so they follow the user's language.
+	get name() {
+		return t('operation.name');
+	},
 	icon: 'translate',
-	description: 'Translate items into their other languages with Supertext and save the translations.',
+	get description() {
+		return t('operation.description');
+	},
 	overview: ({ collection, source, targets, onlyMissing }) => [
-		{ label: 'Collection', text: collection || 'From trigger' },
-		{ label: 'From', text: source || 'First language' },
-		{ label: 'Into', text: (Array.isArray(targets) ? targets.join(', ') : targets) || 'All other languages' },
-		{ label: 'Only empty languages', text: onlyMissing ? 'Yes' : 'No' },
+		{ label: t('operation.collection'), text: collection || t('operation.fromTrigger') },
+		{ label: t('panel.from'), text: source || t('operation.firstLanguage') },
+		{ label: t('panel.into'), text: (Array.isArray(targets) ? targets.join(', ') : targets) || t('operation.allOtherLanguages') },
+		{ label: t('operation.onlyMissing'), text: onlyMissing ? t('operation.yes') : t('operation.no') },
 	],
-	options: [
+	options: () => [
 		{
 			field: 'collection',
-			name: 'Collection',
+			name: t('operation.collection'),
 			type: 'string',
-			meta: { width: 'half', interface: 'system-collection', note: 'Leave empty to use the collection of the trigger.' },
+			meta: { width: 'half', interface: 'system-collection', note: t('operation.collectionNote') },
 		},
 		{
 			field: 'item',
-			name: 'Item IDs',
+			name: t('operation.item'),
 			type: 'json',
-			meta: { width: 'half', interface: 'tags', note: 'Leave empty to use the item(s) of the trigger.' },
+			meta: { width: 'half', interface: 'tags', note: t('operation.itemNote') },
 		},
 		{
 			field: 'field',
-			name: 'Translations field',
+			name: t('operation.field'),
 			type: 'string',
-			meta: { width: 'half', interface: 'input', options: { placeholder: 'translations' }, note: 'Only needed if the collection has more than one.' },
+			meta: { width: 'half', interface: 'input', options: { placeholder: 'translations' }, note: t('operation.fieldNote') },
 		},
 		{
 			field: 'source',
-			name: 'Translate from',
+			name: t('operation.source'),
 			type: 'string',
-			meta: { width: 'half', interface: 'input', options: { placeholder: 'en-US' }, note: 'Language code. Empty: the first language.' },
+			meta: { width: 'half', interface: 'input', options: { placeholder: 'en-US' }, note: t('operation.sourceNote') },
 		},
 		{
 			field: 'targets',
-			name: 'Translate into',
+			name: t('operation.targets'),
 			type: 'json',
-			meta: { width: 'full', interface: 'tags', options: { placeholder: 'de-CH, fr-CH' }, note: 'Language codes. Empty: all other languages.' },
+			meta: { width: 'full', interface: 'tags', options: { placeholder: 'de-CH, fr-CH' }, note: t('operation.targetsNote') },
 		},
 		{
 			field: 'fields',
-			name: 'Fields',
+			name: t('operation.fields'),
 			type: 'json',
-			meta: { width: 'full', interface: 'tags', note: 'Fields of the translations collection. Empty: all text fields.' },
+			meta: { width: 'full', interface: 'tags', note: t('operation.fieldsNote') },
 		},
 		{
 			field: 'onlyMissing',
-			name: 'Only empty languages',
+			name: t('operation.onlyMissing'),
 			type: 'boolean',
-			meta: { width: 'half', interface: 'boolean', options: { label: 'Skip languages that already have text' } },
+			meta: { width: 'half', interface: 'boolean', options: { label: t('operation.onlyMissingLabel') } },
 			schema: { default_value: false },
 		},
 	],

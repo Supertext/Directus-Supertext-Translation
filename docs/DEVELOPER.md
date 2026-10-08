@@ -20,6 +20,9 @@ src/
     config.ts              SUPERTEXT_* environment variables (raw process.env first: Directus splits values at commas)
     translator.ts          relation discovery, permission check, document per item, one request per language, save
     version.ts             extension version, read at runtime from package.json
+  i18n/
+    messages.ts            all UI strings in en/de/fr/it (app side)
+    index.ts               t(), errorText(): picks the strings by the user's Directus language
   shared/
     codecs.ts              field value ⇄ pieces: text, HTML (block by block), markdown (line/block based)
     document.ts            HTML document with data-st-id elements; parse the response
@@ -64,6 +67,14 @@ Line based: headings, list items (incl. task boxes), quotes and table cells are 
 
 Segments missing or empty in the response keep the source text and are reported (`missing` per language, shown in the box).
 
+### Interface strings
+
+Directus can't load translation strings from extensions (custom strings only come from *Settings* → *Translations*), so the app side brings a small dictionary: `src/i18n/messages.ts` holds every string in English, German, French and Italian, `src/i18n/index.ts` picks them by the user's Directus language. Directus sets `<html lang>` together with its own locale, so `t()` reads that attribute (a MutationObserver mirrors it into a ref for our templates). The definitions use getters (`name`, `description`) and functions (`options`, `overview`) so Directus reads them when it renders, in the current language. Primary subtags select the language (`fr-CA` → French); anything else gets English.
+
+The API answers in English (`message`, for logs and API clients) and adds `extensions.key` and `extensions.values` to errors and `key`/`values` to failed languages in `/translate`; the app shows `key` (`error.<code>` or `supertext.<SupertextErrorCode>`) from the dictionary and appends `values.detail`, the Supertext API's own text. `SupertextError.detail` carries that text; `supertext-client.ts` is shared with the Payload plugin, port changes both ways.
+
+New or changed strings need all four languages in the same commit: formal address (Sie, vous, Lei), Directus's own terms (*Sammlung*/*collection*/*raccolta*, *Element*/*élément*/*elemento*, *Flow*/*flux*/*flusso*), "Supertext", `{placeholders}` and URLs unchanged. `test/i18n.test.ts` checks keys, placeholders and URLs and that every used key and API error has a message.
+
 ## Supertext API protocol
 
 AI file translation API v1, same as the WordPress and Payload plugins. Base URLs `https://api.supertext.com/v1/` (live), `https://api.staging.supertext.com/v1/`, `https://api.testing.supertext.com/v1/`. Header `Authorization: Supertext-Auth-Key <key>` (a pasted prefix is stripped; always exactly one).
@@ -82,13 +93,13 @@ HTTP 429 (`RATE_LIMIT_EXCEEDED`) is retried up to 4 times (`Retry-After`, else 1
 `GET /supertext/info?collection=articles&item=1[&field=translations]` →
 `{ configured, relation: { field, junction, junctionPk, languageFk, languagePk, … }, defaultSource, fields: [{ field, kind }], languages: [{ code, name, hasTranslation, id }] }`
 
-`POST /supertext/translate` → `{ collection, item, field, source, fields, results: [{ language, ok, values, id, created, missing, saved } | { language, ok: false, error, code }] }`
+`POST /supertext/translate` → `{ collection, item, field, source, fields, results: [{ language, ok, values, id, created, missing, saved } | { language, ok: false, error, code, key, values }] }`
 
 `GET /supertext/status` (administrators) → `{ version, configured, baseUrl, concurrency, timeoutSeconds, languages: [{ collection, code, name, target, politeness }] }`: `version` is read at runtime from the extension's `package.json` (`src/api/version.ts`, looking upwards from `dist/api.js`; `null` if not found; the page links an `X.Y.Z` version to its GitHub release). `languages` covers every languages collection used by a translations field.
 
 `POST /supertext/test` (administrators) → `{ ok: true }` after `GET features` on the Supertext API (cost-free key check). A rejected key comes back as 502, never 401 (a 401 would sign the admin out of the app).
 
-Errors: `{ errors: [{ message, extensions: { code } }] }` with `unauthenticated` (401), `forbidden` (403; also non-admins on `/status` and `/test`), `not_configured` (400, `/test` without a key), `missing_api_key` (503), `no_source`, `unknown_language`, `no_targets`, `no_fields`, `no_translations_field` (400).
+Errors: `{ errors: [{ message, extensions: { code, key, values } }] }` (`key`/`values`: the message for the app, see *Interface strings*) with `unauthenticated` (401), `forbidden` (403; also non-admins on `/status` and `/test`), `not_configured` (400, `/test` without a key), `missing_api_key` (503), `no_source`, `unknown_language`, `no_targets`, `no_fields`, `no_translations_field` (400).
 
 ## Local setup
 
@@ -113,6 +124,7 @@ npm run test:integration # builds, then starts a real Directus 12 (SQLite) — i
 - `test/codecs.test.ts`: text/HTML/markdown round trips, block segmentation, tables, missing segments, field kinds.
 - `test/supertext-client.test.ts`: protocol, multipart, status/HTTP errors, 429 retries, key prefix.
 - `test/config.test.ts`: settings, including JSON values Directus has split at commas.
+- `test/i18n.test.ts`: all four languages have the English keys, placeholders and URLs; every key the app uses, every API error and every Supertext error code has a message; language lookup and error texts.
 - `test/endpoint.test.ts`: `/status` returns the version from `package.json` and refuses non-admins.
 - `test/demo-check.sh` (CI, needs Docker, PostgreSQL and the stand-in): starts the demo image twice, checks that the demo accounts exist exactly once and no password is logged, `/status` and `/test` as admin (403 for the editor), and translates and saves the first sample article as the editor.
 - `test/integration/directus.test.ts`: Directus 12.4 in a temp folder with the built bundle and the demo setup hook, Supertext replaced by `fake-supertext-server.ts` (prefixes `[<lang>] `). Demo setup (languages, articles, accounts, no passwords in the log), `/info`, translating without saving, structure of rich text, failed languages, unknown languages/missing source, read-only users get 403 and send nothing, saving through the parent and updating the same row, the Flow operation with a manual trigger, and translate-on-create without a loop.

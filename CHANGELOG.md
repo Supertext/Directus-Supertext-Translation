@@ -6,7 +6,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- French and Italian interface (and German where it was missing): the translate box, the Supertext page, the Flow operation and their messages follow the user's Directus language (English, German, French, Italian; other languages show English). API errors carry `extensions.key`/`values` (and failed languages `key`/`values`) so the app can show them translated.
 - The Supertext page shows the plugin version (from `package.json`), linked to its release on GitHub; `/supertext/status` returns it as `version`.
+
+### Changed
+
+- The *No Supertext API key is configured* message on *Test connection* and the *Authentication failure* message now link to both Supertext account signup and API key generation.
 
 ## [0.1.0] - 2026-10-07
 

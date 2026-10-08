@@ -67,6 +67,10 @@ Directus hides new modules until they're switched on: *Settings → Settings →
 
 ![The Supertext page: plugin version, API key set, live API address, languages at a time, timeout, Test connection with "Connected. The API key works." and the language table with Supertext codes and tone](images/09-supertext-module.png)
 
+### Interface languages
+
+The translate box, the Supertext page, the Flow operation and their messages are available in English, German, French and Italian and follow each user's Directus language (*User Directory* → the user → *Language*, or the project default under *Settings* → *Settings* → *Default Language*). Regional variants use their language (e.g. *Français (Canada)* gets French); other languages show English. Directus has no way for extensions to register their own translation strings, so the plugin brings its own; nothing needs to be added under *Settings* → *Translations*. The interface language is independent of the content languages below.
+
 ## Language setup
 
 The plugin uses Directus's own translations model. If your collections are already translated with a **Translations** field, there is nothing to change.

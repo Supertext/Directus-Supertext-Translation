@@ -180,6 +180,8 @@ Dependabot (`.github/dependabot.yml`) opens weekly pull requests: minor and patc
 
 Some major versions are ignored on purpose: TypeScript (7.x is the native compiler, which the type-checking and build tools here don't support yet) and `@types/node` (the types must match the oldest Node version the plugin supports, not the newest). Lift an ignore rule when the plugin moves to the new version.
 
+`vue` is ignored completely: it must be exactly the version `@directus/extensions-sdk` pins (the Vue that Directus itself bundles), otherwise there are two copies of Vue's types and `vue-tsc` crashes (`Cannot read properties of undefined (reading 'length')`). When Dependabot updates the SDK and CI fails on `npm run typecheck`, set `vue` in `package.json` to the SDK's version (`npm view @directus/extensions-sdk@<version> dependencies.vue`, then `npm install -D -E vue@<that version>`) on the same branch.
+
 ## Releasing
 
 Releases are published by `.github/workflows/release.yml` when the version is officially bumped; nobody tags or creates releases by hand.

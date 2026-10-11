@@ -13,6 +13,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 - The *No Supertext API key is configured* message on *Test connection* and the *Authentication failure* message now link to both Supertext account signup and API key generation.
 
+### Fixed
+
+- Target languages without a region (e.g. the language code `de`) are now sent to Supertext as `de-DE` (`fr` → `fr-FR`, `en` → `en-US`, …); Supertext rejected them with `INVALID_LANGUAGE_PAIR`. Regional codes are normalized (`de_ch` → `de-CH`).
+
 ## [0.1.0] - 2026-10-07
 
 ### Added

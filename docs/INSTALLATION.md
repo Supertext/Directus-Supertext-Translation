@@ -51,7 +51,7 @@ Settings are environment variables of the Directus server (`.env` or container v
 | `SUPERTEXT_API_KEY` | — | Supertext API key. Pasting it with the `Supertext-Auth-Key ` prefix works too. Without a key the translate box says so and the button is disabled. |
 | `SUPERTEXT_ENVIRONMENT` | `live` | `live`, `staging` or `testing` Supertext API. |
 | `SUPERTEXT_API_URL` | — | Explicit API base URL (e.g. a proxy); overrides `SUPERTEXT_ENVIRONMENT`. |
-| `SUPERTEXT_LANGUAGE_MAP` | `{}` | JSON: Directus language code → Supertext code, e.g. `{"de":"de-CH"}`. |
+| `SUPERTEXT_LANGUAGE_MAP` | `{}` | JSON: Directus language code → Supertext code with region, e.g. `{"de":"de-CH"}`. Without an entry, bare codes get a default region (`de` → `de-DE`). |
 | `SUPERTEXT_POLITENESS` | `{}` | JSON: language → `more` (formal) or `less` (informal), e.g. `{"de-CH":"more"}`. |
 | `SUPERTEXT_CONCURRENCY` | `3` | Languages translated at the same time. |
 | `SUPERTEXT_POLL_INTERVAL` | `2` | Seconds between status checks while Supertext translates. |
@@ -81,7 +81,12 @@ The plugin uses Directus's own translations model. If your collections are alrea
 
 ![The languages collection of the demo](images/06-languages.png)
 
-Codes are sent to Supertext as they are: the target keeps its region (`de-CH` stays `de-CH`), the source is sent as its primary subtag (`en-US` → `en`), because Supertext rejects regional source codes. Use `SUPERTEXT_LANGUAGE_MAP` for codes Supertext doesn't know.
+Language codes become Supertext codes automatically:
+
+- **Target languages** are always sent with a region, because Supertext rejects bare targets: a code with a region keeps it (`de-CH`; `fr_ch` → `fr-CH`); a bare one gets the usual default (`de` → `de-DE`, `fr` → `fr-FR`, `it` → `it-IT`, `en` → `en-US`, `pt` → `pt-PT`, `zh` → `zh-CN`, …).
+- **The source language** is sent without region (`en-US` → `en`), because Supertext rejects regional source codes.
+
+For another region (e.g. Swiss German for the code `de`) or codes Supertext doesn't know, set `SUPERTEXT_LANGUAGE_MAP`; a mapping wins over the default (for the source, its language is used). The Supertext page shows the code each language is sent as.
 
 ## Add the translate box to a collection
 

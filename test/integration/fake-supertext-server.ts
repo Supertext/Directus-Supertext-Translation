@@ -31,6 +31,11 @@ export async function startFakeSupertext(apiKey: string): Promise<FakeServer> {
 			const form = await new Request('http://x', { method: 'POST', headers: req.headers as Record<string, string>, body: Buffer.concat(chunks) }).formData();
 			const html = await (form.get('file') as Blob).text();
 			const target = String(form.get('target_lang'));
+			const source = form.get('source_lang');
+			// Like the real API: bare targets (`de`) and regional sources (`de-CH`) are rejected.
+			if (!target.includes('-') || (typeof source === 'string' && source.includes('-'))) {
+				return send(400, { error_code: 'INVALID_LANGUAGE_PAIR' });
+			}
 			const id = `f${++n}`;
 			files.set(id, { html, target });
 			state.uploads.push({ target, source: (form.get('source_lang') as string | null) ?? null, html });

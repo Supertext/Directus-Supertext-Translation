@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { errorText, format, messagesFor, t } from '../src/i18n/index.js';
 import { en, messages } from '../src/i18n/messages.js';
-import { statusError, SupertextError } from '../src/shared/supertext-client.js';
+import { ErrorCode, errorForStatus, SupertextError } from 'supertext-sdk';
 
 const root = join(__dirname, '../src');
 const read = (file: string) => readFileSync(join(root, file), 'utf8');
@@ -47,8 +47,8 @@ describe('UI strings', () => {
 		expect(codes.length).toBeGreaterThan(8);
 		for (const [, code, key] of codes) expect(en, key ?? code).toHaveProperty([key ?? `error.${code}`]);
 		expect(en).toHaveProperty(['error.save_failed']);
-		const union = read('shared/supertext-client.ts').match(/export type SupertextErrorCode =([\s\S]*?)\n\n/)![1]!;
-		for (const [, code] of union.matchAll(/'(\w+)'/g)) expect(en, code).toHaveProperty([`supertext.${code}`]);
+		// Every error code of the Supertext SDK.
+		for (const code of Object.values(ErrorCode)) expect(en, code).toHaveProperty([`supertext.${code}`]);
 	});
 });
 
@@ -63,7 +63,7 @@ describe('lookup', () => {
 	});
 
 	it('translates API errors by key or code, keeps unknown ones and appends the detail', () => {
-		const e = statusError(429, 'slow down');
+		const e = errorForStatus(429, 'slow down');
 		expect(errorText({ message: e.message, key: `supertext.${e.code}`, values: { detail: e.detail! } }, 'fr-FR')).toBe(
 			'Trop de requêtes vers Supertext. Veuillez réessayer dans un instant. (slow down)',
 		);
@@ -72,6 +72,6 @@ describe('lookup', () => {
 		);
 		expect(errorText({ message: 'x', key: 'error.save_failed', values: { detail: 'boom' } }, 'it')).toBe('Tradotto ma non salvato: boom');
 		expect(errorText({ message: 'Directus says no', code: 'FORBIDDEN' }, 'de')).toBe('Directus says no');
-		expect(new SupertextError('timeout', 'x').detail).toBeUndefined();
+		expect(new SupertextError('timeout').detail).toBeUndefined();
 	});
 });

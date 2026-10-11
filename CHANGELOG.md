@@ -11,6 +11,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Changed
 
+- The Supertext API is now used through the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (`supertext-sdk`): auth header, upload, rate-limit retries, polling, cleanup, language codes and error codes come from it. It is bundled into the extension; nothing changes for installing.
+- New message for a language pair Supertext doesn't support (`invalid_language_pair`), in English, German, French and Italian.
 - The *No Supertext API key is configured* message on *Test connection* and the *Authentication failure* message now link to both Supertext account signup and API key generation.
 
 ### Fixed

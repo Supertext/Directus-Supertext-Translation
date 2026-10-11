@@ -3,6 +3,8 @@
 FROM node:22-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
+# The Supertext SDK, until it is on npm (a file: dependency).
+COPY vendor ./vendor
 RUN npm ci --ignore-scripts
 COPY tsconfig.json ./
 COPY src ./src

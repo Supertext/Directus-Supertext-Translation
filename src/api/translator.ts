@@ -1,8 +1,7 @@
 import type { Accountability, SchemaOverview } from '@directus/types';
 import { encode, kindForField, type Encoded, type FieldKind } from '../shared/codecs.js';
-import { buildDocument, parseDocument } from '../shared/document.js';
-import { politenessFor, sourceCode, targetCode } from '../shared/languages.js';
-import { SupertextClient, SupertextError } from '../shared/supertext-client.js';
+import { HtmlDocument, LanguageCodes, SupertextClient, SupertextError } from 'supertext-sdk';
+import { extensionVersion } from './version.js';
 import type { SupertextConfig } from './config.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -212,30 +211,31 @@ export async function translateItem(args: TranslateArgs): Promise<TranslateResul
 		encoded.push({ field: f.field, enc, from: pieces.length });
 		pieces.push(...enc.pieces);
 	}
-	const html = buildDocument(pieces);
+	// Every piece is HTML already (plain text escaped by its codec): one segment each.
+	const segments = pieces.map((piece) => ({ text: piece.html, html: true }));
+	const html = HtmlDocument.build(segments);
 
-	const client = new SupertextClient({
-		apiKey: config.apiKey,
+	const client = new SupertextClient(config.apiKey, {
 		baseUrl: config.baseUrl,
 		pollIntervalMs: config.pollIntervalMs,
 		timeoutMs: config.timeoutMs,
-		fetch: args.fetch,
-		sleep: args.sleep,
+		userAgent: `Directus-Supertext-Translation/${extensionVersion() ?? 'dev'}`,
+		...(args.fetch ? { fetch: args.fetch } : {}),
+		...(args.sleep ? { sleep: args.sleep } : {}),
 	});
 
 	const translateOne = async (language: string): Promise<LanguageResult> => {
 		try {
-			const translatedHtml = await client.translateHtml({
-				html,
-				targetLang: targetCode(language, config.languageMap),
-				sourceLang: sourceCode(source, config.languageMap),
-				politeness: politenessFor(language, config.politeness),
+			const translatedHtml = await client.translateHtml(html, LanguageCodes.target(language, config.languageMap), {
+				sourceLang: LanguageCodes.source(source, config.languageMap),
+				politeness: config.politeness[language] ?? 'default',
 			});
-			const translated = parseDocument(translatedHtml);
+			// null or empty: missing from the answer; that piece keeps its source text.
+			const translated = HtmlDocument.parse(translatedHtml, segments).map((t) => (t ? t : undefined));
 			const values: Record<string, string> = {};
 			const missing: string[] = [];
 			for (const { field, enc, from } of encoded) {
-				const parts = enc.pieces.map((_, i) => translated.get(from + i));
+				const parts = enc.pieces.map((_, i) => translated[from + i]);
 				if (parts.some((p) => p === undefined)) missing.push(field);
 				values[field] = enc.rebuild(parts);
 			}

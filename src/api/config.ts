@@ -1,5 +1,13 @@
-import type { Politeness, SupertextEnvironment } from '../shared/supertext-client.js';
-import { SUPERTEXT_ENVIRONMENTS } from '../shared/supertext-client.js';
+import { LIVE_BASE_URL, type Politeness } from 'supertext-sdk';
+
+/** API base URLs; the SDK defaults to the live one. */
+export const SUPERTEXT_ENVIRONMENTS = {
+	live: LIVE_BASE_URL,
+	staging: 'https://api.staging.supertext.com/v1/',
+	testing: 'https://api.testing.supertext.com/v1/',
+} as const;
+
+export type SupertextEnvironment = keyof typeof SUPERTEXT_ENVIRONMENTS;
 
 /** Server-side settings, read from Directus's environment (`.env` / container variables). */
 export type SupertextConfig = {

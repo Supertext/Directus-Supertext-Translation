@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { encode, kindForField, htmlToText } from '../src/shared/codecs.js';
-import { buildDocument, parseDocument } from '../src/shared/document.js';
+import { HtmlDocument } from 'supertext-sdk';
 
 /** Round trip through a fake translator that upper-cases text outside tags. */
 function roundTrip(kind: 'text' | 'html' | 'markdown', value: string, translate = upper) {
 	const enc = encode(kind, value)!;
-	const doc = buildDocument(enc.pieces);
-	const translated = parseDocument(translate(doc));
-	return { pieces: enc.pieces.map((p) => p.html), result: enc.rebuild(enc.pieces.map((_, i) => translated.get(i))) };
+	// As in the translator: every piece is one HTML segment of the SDK's document.
+	const segments = enc.pieces.map((p) => ({ text: p.html, html: true }));
+	const translated = HtmlDocument.parse(translate(HtmlDocument.build(segments)), segments);
+	return { pieces: enc.pieces.map((p) => p.html), result: enc.rebuild(translated.map((t) => (t ? t : undefined))) };
 }
 const upperText = (t: string) => t.replace(/&[#a-z0-9]+;|[^&]+/gi, (part) => (part.startsWith('&') ? part : part.toUpperCase()));
 const upper = (html: string) =>

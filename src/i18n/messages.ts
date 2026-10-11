@@ -103,6 +103,7 @@ export const en = {
 	'supertext.translation_error': 'Supertext failed to translate the document.',
 	'supertext.transport_error': 'Could not reach Supertext.',
 	'supertext.unexpected_status': 'Supertext sent an unexpected status code {status}.',
+	'supertext.invalid_language_pair': 'Supertext does not support this language pair. Check the language codes or SUPERTEXT_LANGUAGE_MAP.',
 	'supertext.not_found': 'The requested Supertext resource was not found.',
 };
 
@@ -207,6 +208,7 @@ export const de: Messages = {
 	'supertext.translation_error': 'Supertext konnte das Dokument nicht übersetzen.',
 	'supertext.transport_error': 'Supertext ist nicht erreichbar.',
 	'supertext.unexpected_status': 'Supertext hat einen unerwarteten Statuscode {status} gesendet.',
+	'supertext.invalid_language_pair': 'Supertext unterstützt dieses Sprachpaar nicht. Bitte prüfen Sie die Sprachcodes oder SUPERTEXT_LANGUAGE_MAP.',
 	'supertext.not_found': 'Die angeforderte Supertext-Ressource wurde nicht gefunden.',
 };
 
@@ -308,6 +310,7 @@ export const fr: Messages = {
 	'supertext.translation_error': 'Supertext n’a pas pu traduire le document.',
 	'supertext.transport_error': 'Impossible de joindre Supertext.',
 	'supertext.unexpected_status': 'Supertext a renvoyé un code d’état inattendu : {status}.',
+	'supertext.invalid_language_pair': 'Supertext ne prend pas en charge cette combinaison de langues. Veuillez vérifier les codes de langue ou SUPERTEXT_LANGUAGE_MAP.',
 	'supertext.not_found': 'La ressource Supertext demandée est introuvable.',
 };
 
@@ -409,6 +412,7 @@ export const it: Messages = {
 	'supertext.translation_error': 'Supertext non è riuscito a tradurre il documento.',
 	'supertext.transport_error': 'Impossibile raggiungere Supertext.',
 	'supertext.unexpected_status': 'Supertext ha inviato un codice di stato inatteso: {status}.',
+	'supertext.invalid_language_pair': 'Supertext non supporta questa combinazione di lingue. Verifichi i codici lingua o SUPERTEXT_LANGUAGE_MAP.',
 	'supertext.not_found': 'La risorsa Supertext richiesta non è stata trovata.',
 };
 

@@ -1,8 +1,7 @@
 import { defineEndpoint } from '@directus/extensions-sdk';
 import { readConfig } from '../api/config.js';
 import { findTranslationsRelation, loadItem, translateItem, TranslateError } from '../api/translator.js';
-import { SupertextClient, SupertextError } from '../shared/supertext-client.js';
-import { politenessFor, targetCode } from '../shared/languages.js';
+import { LanguageCodes, SupertextClient, SupertextError } from 'supertext-sdk';
 import { extensionVersion } from '../api/version.js';
 
 /**
@@ -56,7 +55,7 @@ export default defineEndpoint({
 					const rows: any[] = await new services.ItemsService(collection, { schema, accountability: req.accountability }).readByQuery({ limit: -1, sort: [pk] });
 					for (const row of rows) {
 						const code = String(row[pk]);
-						languages.push({ collection, code, name: String(row.name ?? code), target: targetCode(code, config.languageMap), politeness: politenessFor(code, config.politeness) });
+						languages.push({ collection, code, name: String(row.name ?? code), target: LanguageCodes.target(code, config.languageMap), politeness: config.politeness[code] ?? 'default' });
 					}
 				}
 				res.json({
@@ -84,7 +83,7 @@ export default defineEndpoint({
 						'not_configured',
 					);
 				try {
-					await new SupertextClient({ apiKey: config.apiKey, baseUrl: config.baseUrl }).validateApiKey();
+					await new SupertextClient(config.apiKey, { baseUrl: config.baseUrl, userAgent: `Directus-Supertext-Translation/${extensionVersion() ?? 'dev'}` }).validateApiKey();
 				} catch (error) {
 					// Supertext's own 401/403 must not reach the app as a Directus 401 (that signs the admin out).
 					if (error instanceof SupertextError) throw TranslateError.fromSupertext(error);

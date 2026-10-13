@@ -87,7 +87,7 @@ Lessons from testing against the live API (October 2026), to apply in every plug
 ## This repo
 
 - `npm test` (unit), `npm run typecheck` (vue-tsc; keep TypeScript 5), `npm run test:integration` (real Directus 12 on SQLite with the demo hook). All must pass before committing.
-- All Supertext API calls go through the Supertext SDK (`supertext-sdk`), a devDependency from `vendor/supertext-sdk` bundled into `dist/` and wrapped by `src/shared/supertext-client.ts`. Never edit `vendor/`: fix the SDK in `Supertext/Supertext-API-SDK-and-Guide` and run `scripts/vendor-sdk.sh`. Every SDK error code needs a `supertext.<code>` message in all four languages.
+- All Supertext API calls go through the Supertext SDK (`supertext-sdk`), a devDependency from `vendor/supertext-sdk` bundled into `dist/` and wrapped by `src/shared/supertext-client.ts`. Never edit `vendor/`: fix the SDK in `Supertext/Supertext-API-SDK-and-Guide` and run `scripts/vendor-sdk.sh [ref]`. Every SDK error code needs a `supertext.<code>` message in all four languages.
 - UI strings live in `src/i18n/messages.ts` (English, German, French, Italian; Directus has no extension i18n API); add every new string in all four. API errors stay English and carry a `key` for the app.
 - Before pushing a demo change: `test/demo-check.sh` (CI job **demo**: the demo image on PostgreSQL with the stand-in).
 - New settings go in `src/api/config.ts` (read them through `readConfig()`: Directus splits env values at commas) **and** the settings table in `docs/INSTALLATION.md`. Field handling lives in `src/shared/codecs.ts` (`kindForField`); keep "What is translated" in both guides in sync.

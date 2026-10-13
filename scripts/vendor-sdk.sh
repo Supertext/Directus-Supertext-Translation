@@ -29,9 +29,10 @@ rm -rf "$work/ts/node_modules" "$work/ts/dist"
 (cd "$work/ts" && npm ci --no-audit --no-fund --silent && npm run --silent build)
 rm -rf "$dest"
 mkdir -p "$dest"
-cp "$work"/ts/dist/*.js "$work"/ts/dist/*.d.ts "$dest/"
+# dist/ has the version-neutral index and one folder per API version (v1/).
+(cd "$work/ts/dist" && find . -name '*.js' -o -name '*.d.ts' | while read -r f; do mkdir -p "$OLDPWD/$dest/$(dirname "$f")"; cp "$f" "$OLDPWD/$dest/$f"; done)
 cp "$src/sdk/typescript/LICENSE" "$dest/LICENSE"
-printf '{\n  "name": "supertext-sdk",\n  "version": "%s",\n  "private": true,\n  "type": "module",\n  "main": "./index.js",\n  "types": "./index.d.ts",\n  "license": "MIT"\n}\n' "$version" > "$dest/package.json"
+printf '{\n  "name": "supertext-sdk",\n  "version": "%s",\n  "private": true,\n  "type": "module",\n  "main": "./index.js",\n  "types": "./index.d.ts",\n  "exports": {\n    ".": { "types": "./index.d.ts", "import": "./index.js" },\n    "./v1": { "types": "./v1/index.d.ts", "import": "./v1/index.js" }\n  },\n  "license": "MIT"\n}\n' "$version" > "$dest/package.json"
 printf '%s\n' "$commit" > "$dest/COMMIT"
 printf '%s\n' "$version" > "$dest/VERSION"
 cat > "$dest/README.md" <<README

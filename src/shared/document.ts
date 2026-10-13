@@ -1,4 +1,4 @@
-import { HtmlDocument } from 'supertext-sdk';
+import { HtmlDocument } from 'supertext-sdk/v1';
 import type { Piece } from './codecs.js';
 
 /**

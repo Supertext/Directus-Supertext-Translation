@@ -11,7 +11,6 @@ import { DEFAULT_MAX_CHARACTERS, isBlank, planBatches } from './batching.js';
 import { errorForFileStatus, errorForStatus, SupertextError } from './errors.js';
 import { build, parse } from './html-document.js';
 import { encodeMultipart } from './multipart.js';
-import { source as sourceCode, target as targetCode } from './language-codes.js';
 import { apiKeyCheckFromError, apiKeyFingerprint, isoSeconds, KEY_CHECK_TIMEOUT_MS } from './api-key-check.js';
 export const LIVE_BASE_URL = 'https://api.supertext.com/v1/';
 const SDK_USER_AGENT = 'supertext-sdk-typescript';
@@ -42,6 +41,22 @@ export class SupertextClient {
         this.#sleep = options.sleep ?? defaultSleep;
         this.#now = options.now ?? Date.now;
     }
+    /**
+     * The language pairs the API offers right now, with their features (`supports_politeness`, …):
+     * the live version of `Languages.SOURCES`/`TARGETS`, e.g. for a settings page. Cost-free.
+     */
+    async getFeatures() {
+        const list = jsonObject(await this.#request('GET', 'features'))?.supported_features;
+        if (!Array.isArray(list))
+            return [];
+        return list.flatMap((item) => {
+            const o = item && typeof item === 'object' ? item : {};
+            if (typeof o.source_lang !== 'string' || typeof o.target_lang !== 'string')
+                return [];
+            const features = Array.isArray(o.features) ? o.features.filter((f) => typeof f === 'string') : [];
+            return [{ sourceLang: o.source_lang, targetLang: o.target_lang, features }];
+        });
+    }
     /** Cost-free check that the API key is accepted (`GET features`). Throws a `SupertextError` if not. */
     async validateApiKey() {
         await this.#request('GET', 'features');
@@ -64,10 +79,16 @@ export class SupertextClient {
             return { ...apiKeyCheckFromError(error), checkedAt, fingerprint };
         }
     }
-    /** Uploads an HTML document; returns the file id. Language codes are normalized (`de` → `de-DE`, `en-US` → `en`). */
+    /**
+     * Uploads an HTML document; returns the file id. The language codes are sent as given
+     * (trimmed): resolve CMS languages with `Languages.target()` / `Languages.source()` first.
+     */
     async submit(html, targetLang, options = {}) {
-        const fields = [['target_lang', targetCode(targetLang)]];
-        const source = sourceCode(options.sourceLang ?? '');
+        const target = targetLang.trim();
+        if (target === '')
+            throw new SupertextError('unsupported_language');
+        const fields = [['target_lang', target]];
+        const source = (options.sourceLang ?? '').trim();
         if (source !== '')
             fields.push(['source_lang', source]); // omitted: auto-detect
         const politeness = options.politeness;

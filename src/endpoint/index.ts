@@ -2,7 +2,7 @@ import { defineEndpoint } from '@directus/extensions-sdk';
 import { readConfig } from '../api/config.js';
 import { findTranslationsRelation, loadItem, translateItem, TranslateError } from '../api/translator.js';
 import { SupertextClient } from '../shared/supertext-client.js';
-import { politenessFor, targetCode } from '../shared/languages.js';
+import { politenessFor, supportsPoliteness, targetCodeOrNull } from '../shared/languages.js';
 import { extensionVersion } from '../api/version.js';
 import { Reporting, siteUrl } from '../api/reporting.js';
 
@@ -63,12 +63,13 @@ export default defineEndpoint({
 						// not a collection with translations
 					}
 				}
-				const languages: { collection: string; code: string; name: string; target: string; politeness: string }[] = [];
+				const languages: { collection: string; code: string; name: string; target: string | null; politeness: string; politenessSupported: boolean | null }[] = [];
 				for (const [collection, pk] of languageCollections) {
 					const rows: any[] = await new services.ItemsService(collection, { schema, accountability: req.accountability }).readByQuery({ limit: -1, sort: [pk] });
 					for (const row of rows) {
 						const code = String(row[pk]);
-						languages.push({ collection, code, name: String(row.name ?? code), target: targetCode(code, config.languageMap), politeness: politenessFor(code, config.politeness) });
+						const target = targetCodeOrNull(code, config.languageMap);
+						languages.push({ collection, code, name: String(row.name ?? code), target, politeness: politenessFor(code, config.politeness), politenessSupported: target ? supportsPoliteness(target) : null });
 					}
 				}
 				report(req, config);

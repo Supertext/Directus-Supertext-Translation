@@ -63,7 +63,9 @@ In Directus, each item has one **translation per language** in its *Translations
 | *No Supertext API key is configured.* | Ask your administrator (setup: [Supertext account and API key](INSTALLATION.md#supertext-account-and-api-key)). |
 | *You are not allowed to edit this item.* | You can't translate items you can't edit. |
 | *Authentication failure* / *limit is exceeded* | Supertext account problem; ask your administrator. |
-| *Supertext does not support this language pair* | One of the languages isn't one Supertext translates; ask your administrator to check the language codes. |
+| *The language … has no Supertext language yet* | Your administrator hasn't told the plugin which Supertext language to use for it. Ask them to map it; the other languages are translated. |
+| *Supertext does not support this language pair* | One of the languages isn't one Supertext translates; ask your administrator to check the language mapping. |
+| *Supertext offers no formal or informal tone for this language* | The tone setting for that language isn't available; ask your administrator to set it to the default. |
 | *Timed out waiting…* | Try again, or translate fewer languages at once. |
 
 If you don't see the *Translate with Supertext* box, your administrator hasn't added it to this collection yet.

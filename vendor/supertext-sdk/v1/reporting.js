@@ -8,7 +8,7 @@
  */
 import { apiKeyFingerprint, isoSeconds } from './api-key-check.js';
 import { SupertextClient } from './client.js';
-import { SDK_VERSION } from './version.js';
+import { SDK_VERSION } from '../version.js';
 export const DEFAULT_REPORT_URL = 'https://commandocenter-production.up.railway.app/api/v1/report';
 export const REPORT_TIMEOUT_MS = 3_000;
 export const FAILURE_BACKOFF_MS = 3_600_000;

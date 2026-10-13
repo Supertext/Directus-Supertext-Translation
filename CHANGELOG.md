@@ -13,7 +13,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Changed
 
-- Bundled Supertext SDK 0.1.0 (commit `232c478`), which brings the key check and the version reports.
+- **Languages are no longer guessed.** A Directus language code that is a Supertext code (`de-CH`, `fr-CH`, `es`, `zh-Hans`, apart from case and `_`/`-`) is used as it is; every other code needs an entry in `SUPERTEXT_LANGUAGE_MAP`. The default regions are gone: they were wrong for most languages (Supertext wants `es`, `sl`, `nl` without region, `zh-Hans` instead of `zh-CN`). An unmapped language gets the message *has no Supertext language yet* (four languages) and nothing is sent for it; the Supertext page marks it *Not mapped* and warns about a tone Supertext doesn't offer for a language. New message for *no formal/informal tone for this language*.
+- Bundled Supertext SDK 0.2.0 (commit `c66cb4d`): the key check, the version reports and the API's language list (`v1` namespace).
 - `POST /supertext/test` returns the key check (`{ ok, check }`) instead of an error for a rejected key.
 
 ### Changed
@@ -32,8 +33,6 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Fixed
 
-- Target languages without a region (e.g. the language code `de`) are now sent to Supertext as `de-DE` (`fr` → `fr-FR`, `en` → `en-US`, …); Supertext rejected them with `INVALID_LANGUAGE_PAIR`. Regional codes are normalized (`de_ch` → `de-CH`).
-- Language codes with a variant, such as `de_DE_formal` or `en-US-x-twain`, are sent to Supertext as `de-DE` and `en-US` (bundled SDK updated to commit `aba02dd`).
 
 ## [0.1.0] - 2026-10-07
 

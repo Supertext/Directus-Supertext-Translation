@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Knex } from 'knex';
-import { InstallationReporter, pingResponse, reporterState, reportsEnabled, type ApiKeyCheck, type PingResponse, type ReporterResult, type ReporterState } from 'supertext-sdk';
+import { InstallationReporter, pingResponse, reporterState, reportsEnabled, type ApiKeyCheck, type PingResponse, type ReporterResult, type ReporterState } from 'supertext-sdk/v1';
 import type { SupertextConfig } from './config.js';
 import { extensionVersion } from './version.js';
 

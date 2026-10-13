@@ -243,7 +243,7 @@ export async function translateItem(args: TranslateArgs): Promise<TranslateResul
 			return { language, ok: true, values, id: row ? (row[relation.junctionPk] as PrimaryKey) : null, created: !row, missing, saved: false };
 		} catch (error) {
 			if (error instanceof SupertextError) {
-				return { language, ok: false, error: error.message, code: error.code, key: `supertext.${error.code}`, values: supertextValues(error) };
+				return { language, ok: false, error: error.message, code: error.code, key: `supertext.${error.code}`, values: { ...supertextValues(error), language } };
 			}
 			throw error;
 		}

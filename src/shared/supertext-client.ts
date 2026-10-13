@@ -11,8 +11,8 @@
  *
  * No Directus imports here (tested on its own).
  */
-import { LIVE_BASE_URL, SupertextClient as SdkClient, SupertextError } from 'supertext-sdk'
-import type { ApiKeyCheck, ErrorCode, FetchLike, Politeness } from 'supertext-sdk'
+import { LIVE_BASE_URL, SupertextClient as SdkClient, SupertextError } from 'supertext-sdk/v1'
+import type { ApiKeyCheck, ErrorCode, FetchLike, Politeness } from 'supertext-sdk/v1'
 
 export { SupertextError }
 export type { Politeness }

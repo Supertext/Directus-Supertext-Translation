@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { errorText, format, messagesFor, t } from '../src/i18n/index.js';
 import { en, messages } from '../src/i18n/messages.js';
-import { ErrorCode, errorForStatus } from 'supertext-sdk';
+import { ErrorCode, errorForStatus } from 'supertext-sdk/v1';
 import { SupertextError } from '../src/shared/supertext-client.js';
 
 const root = join(__dirname, '../src');

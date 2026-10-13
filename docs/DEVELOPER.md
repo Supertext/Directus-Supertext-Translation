@@ -106,12 +106,13 @@ Then run the unit and integration tests and note the update in `CHANGELOG.md`. O
 
 ### Language codes
 
-Supertext's rule (from testing the live API): **source = bare language** (`en`, `de`), **target = regional code** (`de-DE`, `fr-CH`, `en-US`). A regional source or a bare target is rejected with `INVALID_LANGUAGE_PAIR`. Translating within one language (source `en`, target `en-GB`) is allowed.
+Supertext accepts exactly the codes its `GET features` lists (the SDK's `Languages`, from the live API): bare sources (`en`, `de`); targets in one exact form each, regional for German, English, French, Italian and Portuguese (`de-CH`, `en-US`, `pt-BR`), with a script for Chinese and Serbian (`zh-Hans`, `sr-Latn`), bare for the others (`es`, `nl`, `sl`). Anything else is HTTP 404 `INVALID_LANGUAGE_PAIR`; formal/informal for a target without it (`en-US`, `rm`, …) is HTTP 400 `FEATURE_ERROR` (`unsupported_feature`). No pair within one language.
 
-`src/shared/languages.ts` turns Directus language codes into Supertext codes with the SDK's `LanguageCodes`:
+`src/shared/languages.ts` turns Directus language codes into Supertext codes with the SDK's `Languages`, **without guessing**:
 
-- `targetCode(code, languageMap)`: the `SUPERTEXT_LANGUAGE_MAP` entry wins, else the code. It is normalized (`de_ch`/`de-ch` → `de-CH`; scripts and numeric regions keep their form: `zh-Hant`, `es-419`). A bare language gets its default region from the SDK's `DEFAULT_REGIONS` (de→de-DE, en→en-US, fr→fr-FR, it→it-IT, pt→pt-PT, zh→zh-CN, …; the same table in every Supertext plugin). Unknown bare codes are sent unchanged, so Supertext's error names them. The Supertext page shows the resulting code per language.
-- `sourceCode(code, languageMap)`: the language of the mapped code or the code (`en-US` → `en`).
+- `targetCode(code, languageMap)`: the `SUPERTEXT_LANGUAGE_MAP` entry wins (sent as it is); else a Directus code that equals a Supertext code apart from case and `_`/`-` (`de-CH`, `fr_ch` → `fr-CH`, `es`); else `SupertextError('unsupported_language')`, which the translator reports for that language (`supertext.unsupported_language` with `{language}`) without calling Supertext. There are no default regions: `de` must be mapped (to `de-DE`, `de-CH` or `de-AT`).
+- `sourceCode(code, languageMap)`: the mapping, else the Supertext source for the code (`en-US` → `en`), else `unsupported_language`.
+- The Supertext page shows the code per language, *Not mapped* for the others, and warns when a tone is set for a target that has none.
 
 The stand-ins (`test/fakeSupertext.ts`, `test/integration/fake-supertext-server.ts`, `test/docs/stand-in.mjs`) reject bare targets and regional sources like the real API.
 

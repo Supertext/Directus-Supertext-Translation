@@ -54,8 +54,11 @@
 					<tbody>
 						<tr v-for="l in status.languages" :key="l.collection + l.code">
 							<td>{{ l.name }} <code>{{ l.code }}</code></td>
-							<td><code>{{ l.target }}</code></td>
-							<td>{{ l.politeness === 'more' ? t('module.formal') : l.politeness === 'less' ? t('module.informal') : t('module.default') }}</td>
+							<td><code v-if="l.target">{{ l.target }}</code><span v-else class="fail"><v-icon name="error" small /> {{ t('module.notMapped') }}</span></td>
+							<td>
+								{{ l.politeness === 'more' ? t('module.formal') : l.politeness === 'less' ? t('module.informal') : t('module.default') }}
+								<span v-if="l.politeness !== 'default' && l.politenessSupported === false" class="fail"> · {{ t('module.noPoliteness') }}</span>
+							</td>
 						</tr>
 					</tbody>
 				</table>

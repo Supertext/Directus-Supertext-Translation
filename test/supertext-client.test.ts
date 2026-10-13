@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { sourceCode, targetCode } from '../src/shared/languages.js'
+import { sourceCode, supportsPoliteness, targetCode, targetCodeOrNull } from '../src/shared/languages.js'
 import { SupertextClient, SupertextError } from '../src/shared/supertext-client.js'
 import { fakeSupertext } from './fakeSupertext.js'
 
@@ -87,36 +87,32 @@ describe('SupertextClient', () => {
   })
 })
 
-describe('language codes', () => {
+describe('language codes (no guessing)', () => {
   it('sends a bare source language', () => {
     expect(sourceCode('en')).toBe('en')
-  })
-  it('strips the region from a regional source', () => {
     expect(sourceCode('de-CH')).toBe('de')
-    expect(sourceCode('pt_BR')).toBe('pt')
     expect(sourceCode('EN-us')).toBe('en')
   })
-  it('gives a bare target its default region', () => {
-    expect(targetCode('de')).toBe('de-DE')
-    expect(targetCode('en')).toBe('en-US')
-    expect(targetCode('sl')).toBe('sl-SI')
-    expect(targetCode('ZH')).toBe('zh-CN')
-  })
-  it('keeps a regional target and normalizes case and underscores', () => {
+  it('uses a Directus code that is a Supertext code, ignoring case and underscores', () => {
     expect(targetCode('de-CH')).toBe('de-CH')
     expect(targetCode('de_ch')).toBe('de-CH')
-    expect(targetCode('fr-ch')).toBe('fr-CH')
+    expect(targetCode('es')).toBe('es')
     expect(targetCode('zh-hant')).toBe('zh-Hant')
-    expect(targetCode('es-419')).toBe('es-419')
+  })
+  it('refuses codes Supertext does not have, without a default region', () => {
+    for (const code of ['de', 'en', 'sl-SI', 'zh-CN', 'xx']) {
+      expect(() => targetCode(code)).toThrow(expect.objectContaining({ code: 'unsupported_language' }))
+    }
+    expect(targetCodeOrNull('de')).toBeNull()
   })
   it('lets the mapping win', () => {
     expect(targetCode('ch', { ch: 'de-CH' })).toBe('de-CH')
     expect(targetCode('de', { de: 'de-AT' })).toBe('de-AT')
-    expect(sourceCode('ch', { ch: 'de-CH' })).toBe('de')
+    expect(sourceCode('ch', { ch: 'de' })).toBe('de')
   })
-  it('sends unknown bare codes unchanged', () => {
-    expect(targetCode('xx')).toBe('xx')
-    expect(targetCode('ch')).toBe('ch')
+  it('knows which targets offer formal/informal', () => {
+    expect(supportsPoliteness('de-CH')).toBe(true)
+    expect(supportsPoliteness('en-US')).toBe(false)
   })
 })
 
@@ -150,7 +146,7 @@ describe('rate limiting', () => {
   })
 
   it('honours Retry-After', async () => {
-    const { retryDelayMs } = await import('supertext-sdk')
+    const { retryDelayMs } = await import('supertext-sdk/v1')
     expect(retryDelayMs(0, '3')).toBe(3000)
     expect(retryDelayMs(1, null)).toBeGreaterThanOrEqual(2000)
   })

@@ -95,7 +95,7 @@ export const en = {
 	'supertext.file_deleted': 'The Supertext translation file was deleted before it could be downloaded.',
 	'supertext.incomplete_response': 'The translated document was empty.',
 	'supertext.no_file_id': 'Supertext did not return a file id.',
-	'supertext.invalid_language_pair': 'Supertext does not support this language pair. Check the language codes (SUPERTEXT_LANGUAGE_MAP).',
+	'supertext.invalid_language_pair': 'Supertext does not support this language pair. Check the language mapping (SUPERTEXT_LANGUAGE_MAP).',
 	'supertext.payload_too_large': 'The document is too large for Supertext to translate.',
 	'supertext.quota_exceeded': 'Your Supertext translation limit is exceeded. Please upgrade your subscription.',
 	'supertext.service_unavailable': 'Supertext service unavailable.',
@@ -117,6 +117,10 @@ export const en = {
 	'keycheck.missing': 'No API key is set yet. No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role).',
 	'keycheck.unreachable': "The API key couldn't be checked because Supertext can't be reached. The settings are saved; check again later.",
 	'keycheck.error': "The API key couldn't be checked: Supertext answered with an error ({status}). The settings are saved; check again later.",
+	'module.notMapped': 'Not mapped: add it to SUPERTEXT_LANGUAGE_MAP',
+	'module.noPoliteness': 'Supertext offers no formal/informal choice for this language',
+	'supertext.unsupported_language': 'The language {language} has no Supertext language yet. Ask your administrator to map it (SUPERTEXT_LANGUAGE_MAP, e.g. {"de":"de-CH"}).',
+	'supertext.unsupported_feature': 'Supertext offers no formal or informal tone for this language. Set it to the default tone (SUPERTEXT_POLITENESS).',
 };
 
 export type MessageKey = keyof typeof en;
@@ -234,6 +238,10 @@ export const de: Messages = {
 	'keycheck.missing': 'Es ist noch kein API-Schlüssel eingetragen. Noch kein Supertext-Konto? Erstellen Sie eines auf supertext.com. Ihren API-Schlüssel erstellen Sie unter supertext.com → Integrations → API (erfordert die Rolle Admin).',
 	'keycheck.unreachable': 'Der API-Schlüssel konnte nicht geprüft werden, weil Supertext nicht erreichbar ist. Die Einstellungen sind gespeichert; prüfen Sie ihn später erneut.',
 	'keycheck.error': 'Der API-Schlüssel konnte nicht geprüft werden: Supertext hat mit einem Fehler geantwortet ({status}). Die Einstellungen sind gespeichert; prüfen Sie ihn später erneut.',
+	'module.notMapped': 'Nicht zugeordnet: in SUPERTEXT_LANGUAGE_MAP ergänzen',
+	'module.noPoliteness': 'Supertext bietet für diese Sprache keine formelle/informelle Anrede an',
+	'supertext.unsupported_language': 'Die Sprache {language} ist noch keiner Supertext-Sprache zugeordnet. Bitten Sie Ihre Administratorin oder Ihren Administrator, sie zuzuordnen (SUPERTEXT_LANGUAGE_MAP, z. B. {"de":"de-CH"}).',
+	'supertext.unsupported_feature': 'Supertext bietet für diese Sprache keine formelle oder informelle Anrede an. Stellen Sie die Standard-Anrede ein (SUPERTEXT_POLITENESS).',
 };
 
 export const fr: Messages = {
@@ -348,6 +356,10 @@ export const fr: Messages = {
 	'keycheck.missing': "Aucune clé API n'est encore saisie. Pas encore de compte Supertext ? Créez-en un sur supertext.com. Générez votre clé API sur supertext.com → Integrations → API (rôle Admin requis).",
 	'keycheck.unreachable': "La clé API n'a pas pu être vérifiée, car Supertext n'est pas joignable. Les paramètres sont enregistrés ; réessayez plus tard.",
 	'keycheck.error': "La clé API n'a pas pu être vérifiée : Supertext a répondu par une erreur ({status}). Les paramètres sont enregistrés ; réessayez plus tard.",
+	'module.notMapped': 'Non associée : ajoutez-la à SUPERTEXT_LANGUAGE_MAP',
+	'module.noPoliteness': 'Supertext ne propose pas de choix formel/informel pour cette langue',
+	'supertext.unsupported_language': 'La langue {language} n’est encore associée à aucune langue Supertext. Demandez à votre administrateur de l’associer (SUPERTEXT_LANGUAGE_MAP, p. ex. {"de":"de-CH"}).',
+	'supertext.unsupported_feature': 'Supertext ne propose pas de ton formel ou informel pour cette langue. Choisissez le ton par défaut (SUPERTEXT_POLITENESS).',
 };
 
 export const it: Messages = {
@@ -462,6 +474,10 @@ export const it: Messages = {
 	'keycheck.missing': 'Non è ancora stata inserita alcuna chiave API. Non ha ancora un account Supertext? Ne crei uno su supertext.com. Generi la Sua chiave API su supertext.com → Integrations → API (richiede il ruolo Admin).',
 	'keycheck.unreachable': 'Non è stato possibile verificare la chiave API perché Supertext non è raggiungibile. Le impostazioni sono salvate; riprovi più tardi.',
 	'keycheck.error': 'Non è stato possibile verificare la chiave API: Supertext ha risposto con un errore ({status}). Le impostazioni sono salvate; riprovi più tardi.',
+	'module.notMapped': 'Non associata: la aggiunga a SUPERTEXT_LANGUAGE_MAP',
+	'module.noPoliteness': 'Supertext non offre una scelta formale/informale per questa lingua',
+	'supertext.unsupported_language': 'La lingua {language} non è ancora associata a una lingua Supertext. Chieda al Suo amministratore di associarla (SUPERTEXT_LANGUAGE_MAP, ad es. {"de":"de-CH"}).',
+	'supertext.unsupported_feature': 'Supertext non offre un tono formale o informale per questa lingua. Imposti il tono predefinito (SUPERTEXT_POLITENESS).',
 };
 
 export const messages: Record<'en' | 'de' | 'fr' | 'it', Messages> = { en, de, fr, it };

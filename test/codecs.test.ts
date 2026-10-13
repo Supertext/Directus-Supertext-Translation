@@ -6,7 +6,7 @@ import { buildDocument, parseDocument } from '../src/shared/document.js';
 function roundTrip(kind: 'text' | 'html' | 'markdown', value: string, translate = upper) {
 	const enc = encode(kind, value)!;
 	const doc = buildDocument(enc.pieces);
-	const translated = parseDocument(translate(doc));
+	const translated = parseDocument(translate(doc), enc.pieces.length);
 	return { pieces: enc.pieces.map((p) => p.html), result: enc.rebuild(enc.pieces.map((_, i) => translated.get(i))) };
 }
 const upperText = (t: string) => t.replace(/&[#a-z0-9]+;|[^&]+/gi, (part) => (part.startsWith('&') ? part : part.toUpperCase()));

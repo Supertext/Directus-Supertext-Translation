@@ -231,7 +231,7 @@ export async function translateItem(args: TranslateArgs): Promise<TranslateResul
 				sourceLang: sourceCode(source, config.languageMap),
 				politeness: politenessFor(language, config.politeness),
 			});
-			const translated = parseDocument(translatedHtml);
+			const translated = parseDocument(translatedHtml, pieces.length);
 			const values: Record<string, string> = {};
 			const missing: string[] = [];
 			for (const { field, enc, from } of encoded) {

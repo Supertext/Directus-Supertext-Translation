@@ -165,7 +165,7 @@ Delete the *Supertext translation* fields from your collections and any flows us
 | "Authentication failure" | Wrong key, or a key for another environment (`live` vs `staging`). Generate a new one at <https://www.supertext.com/en/integrations/api> (Admin role required). |
 | "Too many requests to Supertext" | Rate limit; requests are retried automatically. Lower `SUPERTEXT_CONCURRENCY` if it persists. |
 | "Your Supertext translation limit is exceeded" | The Supertext subscription quota is used up. |
-| `INVALID_LANGUAGE_PAIR` in the error | A language code Supertext doesn't know; add a `SUPERTEXT_LANGUAGE_MAP` entry. |
+| "Supertext does not support this language pair" | A language code Supertext doesn't know (or the pair isn't offered); add a `SUPERTEXT_LANGUAGE_MAP` entry. The details show the codes that were sent. |
 | "Timed out waiting…" | Very long content or slow service: raise `SUPERTEXT_TIMEOUT`. |
 | Rich text opens read-only after saving ("formatting the new editor doesn't support") | The **source** HTML already wasn't in the editor's form (e.g. imported content). Open the source field once, let Directus convert it, save, and translate again. |
 

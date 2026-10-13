@@ -25,9 +25,11 @@ src/
     index.ts               t(), errorText(): picks the strings by the user's Directus language
   shared/
     codecs.ts              field value ⇄ pieces: text, HTML (block by block), markdown (line/block based)
-    document.ts            HTML document with data-st-id elements; parse the response
-    supertext-client.ts    Supertext AI file API v1 client (shared with the Payload plugin)
-    languages.ts           target/source codes, politeness
+    document.ts            HTML document with data-st-id elements (the SDK's HtmlDocument)
+    supertext-client.ts    the extension's Supertext client on top of the Supertext SDK
+    languages.ts           target/source codes (the SDK's LanguageCodes), politeness
+vendor/supertext-sdk/      Supertext SDK (TypeScript, built), bundled into dist/; see *Supertext SDK*
+scripts/vendor-sdk.sh      updates vendor/supertext-sdk
 demo/                      Railway demo (Dockerfile, start script, demo setup hook)
 test/                      unit tests, integration tests (real Directus), docs screenshots
 ```
@@ -71,30 +73,43 @@ Segments missing or empty in the response keep the source text and are reported 
 
 Directus can't load translation strings from extensions (custom strings only come from *Settings* → *Translations*), so the app side brings a small dictionary: `src/i18n/messages.ts` holds every string in English, German, French and Italian, `src/i18n/index.ts` picks them by the user's Directus language. Directus sets `<html lang>` together with its own locale, so `t()` reads that attribute (a MutationObserver mirrors it into a ref for our templates). The definitions use getters (`name`, `description`) and functions (`options`, `overview`) so Directus reads them when it renders, in the current language. Primary subtags select the language (`fr-CA` → French); anything else gets English.
 
-The API answers in English (`message`, for logs and API clients) and adds `extensions.key` and `extensions.values` to errors and `key`/`values` to failed languages in `/translate`; the app shows `key` (`error.<code>` or `supertext.<SupertextErrorCode>`) from the dictionary and appends `values.detail`, the Supertext API's own text. `SupertextError.detail` carries that text; `supertext-client.ts` is shared with the Payload plugin, port changes both ways.
+The API answers in English (`message`, for logs and API clients) and adds `extensions.key` and `extensions.values` to errors and `key`/`values` to failed languages in `/translate`; the app shows `key` (`error.<code>` or `supertext.<SupertextErrorCode>`) from the dictionary and appends `values.detail`, the Supertext API's own text. `SupertextError.detail` carries that text.
 
 New or changed strings need all four languages in the same commit: formal address (Sie, vous, Lei), Directus's own terms (*Sammlung*/*collection*/*raccolta*, *Element*/*élément*/*elemento*, *Flow*/*flux*/*flusso*), "Supertext", `{placeholders}` and URLs unchanged. `test/i18n.test.ts` checks keys, placeholders and URLs and that every used key and API error has a message.
 
 ## Supertext API protocol
 
-AI file translation API v1, same as the WordPress and Payload plugins. Base URLs `https://api.supertext.com/v1/` (live), `https://api.staging.supertext.com/v1/`, `https://api.testing.supertext.com/v1/`. Header `Authorization: Supertext-Auth-Key <key>` (a pasted prefix is stripped; always exactly one).
+AI file translation API v1, same as the WordPress plugin and every other Supertext plugin, done by the Supertext SDK. Base URLs `https://api.supertext.com/v1/` (live), `https://api.staging.supertext.com/v1/`, `https://api.testing.supertext.com/v1/`. Header `Authorization: Supertext-Auth-Key <key>` (a pasted prefix is stripped; always exactly one).
 
 | Step | Request | Notes |
 | --- | --- | --- |
 | Upload | `POST translate/ai/file` multipart: `file` (`content.html`, type exactly `text/html`), `target_lang`, optional `source_lang` (bare language, see *Language codes*), optional `politeness` (`more`/`less`) | → `{ file_id }` |
 | Poll | `GET translate/ai/file/{id}/status` | `translating`, `done`, `error`, `limit_exceeded`, `deleted` |
 | Download | `GET translate/ai/file/{id}/translation` | translated HTML |
-| Delete | `DELETE translate/ai/file/{id}` | always attempted |
+| Delete | `DELETE translate/ai/file/{id}` | always attempted, also after errors |
 
-HTTP 429 (`RATE_LIMIT_EXCEEDED`) is retried up to 4 times (`Retry-After`, else 1/2/4/8 s with jitter). Errors map to `SupertextError.code`: 401/403 `authentication_failure`, 404 `not_found`, 413 `payload_too_large`, 429 `too_many_requests`, 5xx `service_unavailable`, network `transport_error`, status `error` → `translation_error`, `limit_exceeded` → `quota_exceeded`.
+HTTP 429 (`RATE_LIMIT_EXCEEDED`) is retried up to 4 times (`Retry-After`, else 1/2/4/8 s with jitter, at most 30 s). Errors are the SDK's `SupertextError` with a stable `code`: `missing_api_key`, `authentication_failure` (401/403), `invalid_language_pair` (400 `INVALID_LANGUAGE_PAIR`), `not_found` (404), `payload_too_large` (413), `too_many_requests` (429), `service_unavailable` (5xx), `unexpected_status`, `transport_error` (network), `no_file_id`, `translation_error` (status `error`), `quota_exceeded` (`limit_exceeded`), `file_deleted`, `timeout`, `incomplete_response`. Each has a `supertext.<code>` message in all four languages (`test/i18n.test.ts` checks every code of the SDK). The API key never appears in messages.
+
+### Supertext SDK
+
+All Supertext calls go through the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (`sdk/typescript`, npm name `supertext-sdk`), the shared client of all Supertext plugins. It is a devDependency (`"supertext-sdk": "file:vendor/supertext-sdk"`) that `directus-extension build` bundles into `dist/`, so sites install nothing besides the extension. `vendor/supertext-sdk/` holds its built JavaScript and type declarations, a lean `package.json` and `COMMIT` (the SDK commit). Never edit it: fix the SDK repository and copy it again:
+
+```bash
+scripts/vendor-sdk.sh                  # latest main of the SDK repository
+scripts/vendor-sdk.sh <commit-or-tag>
+SDK_DIR=../Supertext-API-SDK-and-Guide scripts/vendor-sdk.sh   # a local clone
+npm install                            # refreshes node_modules/supertext-sdk
+```
+
+Then run the unit and integration tests and note the update in `CHANGELOG.md`. Once the SDK is on npm, the devDependency points at the published version instead; it stays bundled. `src/shared/supertext-client.ts` wraps the SDK client (options in milliseconds, a `fetch` for tests, the User-Agent `supertext-sdk-typescript directus-extension-supertext-translation`).
 
 ### Language codes
 
 Supertext's rule (from testing the live API): **source = bare language** (`en`, `de`), **target = regional code** (`de-DE`, `fr-CH`, `en-US`). A regional source or a bare target is rejected with `INVALID_LANGUAGE_PAIR`. Translating within one language (source `en`, target `en-GB`) is allowed.
 
-`src/shared/languages.ts` (shared with the Payload plugin; port changes both ways) turns Directus language codes into Supertext codes:
+`src/shared/languages.ts` turns Directus language codes into Supertext codes with the SDK's `LanguageCodes`:
 
-- `targetCode(code, languageMap)`: the `SUPERTEXT_LANGUAGE_MAP` entry wins, else the code. It is normalized (`de_ch`/`de-ch` → `de-CH`; scripts and numeric regions keep their form: `zh-Hant`, `es-419`). A bare language gets its default region from `DEFAULT_REGIONS`: ar→ar-SA, bg→bg-BG, cs→cs-CZ, da→da-DK, de→de-DE, el→el-GR, en→en-US, es→es-ES, et→et-EE, fi→fi-FI, fr→fr-FR, hr→hr-HR, hu→hu-HU, it→it-IT, ja→ja-JP, ko→ko-KR, lt→lt-LT, lv→lv-LV, nb→nb-NO, nl→nl-NL, pl→pl-PL, pt→pt-PT, ro→ro-RO, ru→ru-RU, sk→sk-SK, sl→sl-SI, sr→sr-RS, sv→sv-SE, th→th-TH, tr→tr-TR, uk→uk-UA, vi→vi-VN, zh→zh-CN (same table as the other Supertext plugins). Unknown bare codes are sent unchanged, so Supertext's error names them. The Supertext page shows the resulting code per language.
+- `targetCode(code, languageMap)`: the `SUPERTEXT_LANGUAGE_MAP` entry wins, else the code. It is normalized (`de_ch`/`de-ch` → `de-CH`; scripts and numeric regions keep their form: `zh-Hant`, `es-419`). A bare language gets its default region from the SDK's `DEFAULT_REGIONS` (de→de-DE, en→en-US, fr→fr-FR, it→it-IT, pt→pt-PT, zh→zh-CN, …; the same table in every Supertext plugin). Unknown bare codes are sent unchanged, so Supertext's error names them. The Supertext page shows the resulting code per language.
 - `sourceCode(code, languageMap)`: the language of the mapped code or the code (`en-US` → `en`).
 
 The stand-ins (`test/fakeSupertext.ts`, `test/integration/fake-supertext-server.ts`, `test/docs/stand-in.mjs`) reject bare targets and regional sources like the real API.
@@ -133,7 +148,7 @@ npm run test:integration # builds, then starts a real Directus 12 (SQLite) — i
 ```
 
 - `test/codecs.test.ts`: text/HTML/markdown round trips, block segmentation, tables, missing segments, field kinds.
-- `test/supertext-client.test.ts`: protocol, multipart, status/HTTP errors, 429 retries, key prefix.
+- `test/supertext-client.test.ts`: the extension's client on the SDK: protocol, multipart, status/HTTP errors, 429 retries, key prefix, language codes. The SDK's own tests and conformance scenarios run in the SDK repository.
 - `test/config.test.ts`: settings, including JSON values Directus has split at commas.
 - `test/i18n.test.ts`: all four languages have the English keys, placeholders and URLs; every key the app uses, every API error and every Supertext error code has a message; language lookup and error texts.
 - `test/endpoint.test.ts`: `/status` returns the version from `package.json` and refuses non-admins.

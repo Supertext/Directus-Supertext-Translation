@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Changed
+
+- The connection to Supertext now uses the shared [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (TypeScript SDK 0.1.0), bundled into the extension's build, so nothing else needs installing. Translation works as before; an unsupported language pair now has its own message (*Supertext does not support this language pair*) in all four languages.
+
 ### Added
 
 - French and Italian interface (and German where it was missing): the translate box, the Supertext page, the Flow operation and their messages follow the user's Directus language (English, German, French, Italian; other languages show English). API errors carry `extensions.key`/`values` (and failed languages `key`/`values`) so the app can show them translated.

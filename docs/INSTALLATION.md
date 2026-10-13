@@ -56,16 +56,27 @@ Settings are environment variables of the Directus server (`.env` or container v
 | `SUPERTEXT_CONCURRENCY` | `3` | Languages translated at the same time. |
 | `SUPERTEXT_POLL_INTERVAL` | `2` | Seconds between status checks while Supertext translates. |
 | `SUPERTEXT_TIMEOUT` | `180` | Maximum seconds to wait for one language. |
+| `SUPERTEXT_VERSION_REPORTS` | on | *Send version information to Supertext* (see below). `0` (or `false`, `off`, `no`) turns it off. |
 
 JSON values can be written as they are, commas included (Directus would normally split a value at its commas; the extension reads these variables unsplit).
 
+### Version information and the API key check
+
+**Send version information to Supertext** is on by default. The extension then sends the site URL and the versions of this extension, Directus and Node.js to Supertext after an update and when the API key changes, so Supertext support can see which version you run. A report contains exactly: the site URL (`PUBLIC_URL`, else the address the request came in on), the extension's name and version, the Directus and Node.js versions, the Supertext SDK version, whether a key is set, the result of the API key check below (status, time, HTTP status, Supertext's error code) and the address of the ping endpoint. **No content, no API key and no personal data are sent.** Reports go from the Directus server, never from the browser; a report that fails is not retried for an hour and never slows down or breaks a translation. Set `SUPERTEXT_VERSION_REPORTS=0` and restart Directus to turn it off: nothing is sent at all then, and the ping endpoint answers 404.
+
+**The API key check** runs whether or not version information is sent: when Directus first runs the extension's code with a key it hasn't checked yet (the key in `SUPERTEXT_API_KEY` is compared by a fingerprint kept in the database, never the key itself), on **Test connection**, and when Supertext rejects the key during a translation. It's Supertext's cost-free `features` call; nothing is translated or billed. The Supertext page shows the latest result with its time: *the connection works*, *Supertext rejected the API key* (with the links to create an account and generate a key), *no API key is set*, *Supertext can't be reached* or *Supertext answered with an error*.
+
+**The ping endpoint** `GET <PUBLIC_URL>/supertext/ping?challenge=…` is public (no login) and answers only `{"ok":true,"plugin":"Directus-Supertext-Translation","challenge":"…"}`, so Supertext can see that the site is reachable from the internet. It returns nothing else: no versions, no settings, no data.
+
+The extension keeps its state (what was reported last, the latest key check) in a small table `supertext_state` that it creates in the Directus database on first use. Directus lists it as an unmanaged table in the data model; don't add it as a collection.
+
 ### The Supertext page
 
-The bundle adds a **Supertext** page for administrators: the installed plugin version (linked to its release notes on GitHub), whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, every language of your translations fields with the Supertext code and tone it is sent with, and a **Test connection** button (a cost-free call to the Supertext API that checks the key).
+The bundle adds a **Supertext** page for administrators: the installed plugin version (linked to its release notes on GitHub), whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, the latest API key check and a **Test connection** button (a cost-free call to the Supertext API that checks the key again), whether version information is sent to Supertext, and every language of your translations fields with the Supertext code and tone it is sent with.
 
 Directus hides new modules until they're switched on: *Settings → Settings → Module Bar*, enable **Supertext**. Only administrators see it.
 
-![The Supertext page: plugin version, API key set, live API address, languages at a time, timeout, Test connection with "Connected. The API key works." and the language table with Supertext codes and tone](images/09-supertext-module.png)
+![The Supertext page: plugin version, API key set, live API address, languages at a time, timeout, the API key check "API key checked: the connection to Supertext works." with its time, Test connection, Send version information to Supertext: On, and the language table with Supertext codes and tone](images/09-supertext-module.png)
 
 ### Interface languages
 
@@ -162,6 +173,8 @@ Delete the *Supertext translation* fields from your collections and any flows us
 | "Save the item first, then translate it" | New items need to be saved once. |
 | "There is no en-US text to translate" | The source language has no saved text; fill in and save it, or pick another source. |
 | "You are not allowed to edit this item." | The user lacks update permission on the item (see [Permissions](#permissions)). |
+| "Supertext rejected the API key" on the Supertext page | The key is wrong or revoked. Check that the whole key was copied into `SUPERTEXT_API_KEY`, or generate a new one at <https://www.supertext.com/en/integrations/api> (Admin role required). No Supertext account yet? Create one at <https://www.supertext.com/person/en/account/signin>. Restart Directus, then *Test connection*. |
+| "The API key couldn't be checked because Supertext can't be reached" | The Directus server can't reach `api.supertext.com` (firewall, proxy, DNS). Translations need the same connection. |
 | "Authentication failure" | Wrong key, or a key for another environment (`live` vs `staging`). Generate a new one at <https://www.supertext.com/en/integrations/api> (Admin role required). |
 | "Too many requests to Supertext" | Rate limit; requests are retried automatically. Lower `SUPERTEXT_CONCURRENCY` if it persists. |
 | "Your Supertext translation limit is exceeded" | The Supertext subscription quota is used up. |

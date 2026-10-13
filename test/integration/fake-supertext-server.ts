@@ -4,18 +4,20 @@ import type { AddressInfo } from 'node:net';
 /**
  * HTTP stand-in for the Supertext AI file API, for Directus running in another
  * process. "Translates" by prefixing every segment with `[<target_lang>] `.
- * `failFor` makes a target language end with status `error`.
+ * `failFor` makes a target language end with status `error`. `POST /report` stands in for
+ * the Supertext Commando Center (SUPERTEXT_REPORT_URL) and records the version reports.
  */
 export type FakeServer = {
 	url: string;
 	uploads: { target: string; source: string | null; html: string }[];
 	failFor: Set<string>;
+	reports: any[];
 	close(): Promise<void>;
 };
 
 export async function startFakeSupertext(apiKey: string): Promise<FakeServer> {
 	const files = new Map<string, { html: string; target: string }>();
-	const state: FakeServer = { url: '', uploads: [], failFor: new Set(), close: async () => {} };
+	const state: FakeServer = { url: '', uploads: [], failFor: new Set(), reports: [], close: async () => {} };
 	let n = 0;
 
 	const server = http.createServer(async (req, res) => {
@@ -23,8 +25,15 @@ export async function startFakeSupertext(apiKey: string): Promise<FakeServer> {
 			res.writeHead(status, { 'Content-Type': type });
 			res.end(type === 'application/json' ? JSON.stringify(body) : String(body));
 		};
-		if (req.headers.authorization !== `Supertext-Auth-Key ${apiKey}`) return send(401, { error: 'bad key' });
 		const path = new URL(req.url ?? '/', 'http://x').pathname.replace(/^\/v1/, '');
+		if (req.method === 'POST' && path === '/report') {
+			const chunks: Buffer[] = [];
+			for await (const c of req) chunks.push(c as Buffer);
+			state.reports.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+			return send(202, { ok: true });
+		}
+		if (req.headers.authorization !== `Supertext-Auth-Key ${apiKey}`) return send(401, { error: 'bad key' });
+		if (req.method === 'GET' && path === '/features') return send(200, { supported_features: [] });
 		if (req.method === 'POST' && path === '/translate/ai/file') {
 			const chunks: Buffer[] = [];
 			for await (const c of req) chunks.push(c as Buffer);

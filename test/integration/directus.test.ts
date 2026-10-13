@@ -18,6 +18,7 @@ beforeAll(async () => {
 		SUPERTEXT_API_KEY: 'Supertext-Auth-Key it-key',
 		SUPERTEXT_API_URL: fake.url,
 		SUPERTEXT_POLL_INTERVAL: '0.1',
+		SUPERTEXT_REPORT_URL: `${fake.url.replace(/\/v1\/$/, '')}/report`,
 	});
 	admin = client(directus.url, await login(directus.url, ADMIN));
 	editor = client(directus.url, await login(directus.url, EDITOR));
@@ -183,5 +184,40 @@ describe('Flow operation', () => {
 		expect(rows['de-CH'].title).toBe('[de-CH] New article');
 		await new Promise((r) => setTimeout(r, 1500));
 		expect(fake.uploads.length - before).toBe(3);
+	});
+});
+
+describe('Commando Center', () => {
+	it('answers the public ping with the challenge', async () => {
+		const ok = await fetch(`${directus.url}/supertext/ping?challenge=abcdefghijklmnop1234`);
+		expect(ok.status).toBe(200);
+		expect(ok.headers.get('cache-control')).toBe('no-store');
+		expect(await ok.json()).toEqual({ ok: true, plugin: 'Directus-Supertext-Translation', challenge: 'abcdefghijklmnop1234' });
+		const bad = await fetch(`${directus.url}/supertext/ping?challenge=<script>`);
+		expect(bad.status).toBe(400);
+		expect(await bad.json()).toEqual({ ok: false });
+	});
+
+	it('checks the key and reports the installation', async () => {
+		const test = await admin.post('/supertext/test', {});
+		expect(test.json.data.check.status).toBe('ok');
+		await admin.get('/supertext/status');
+		const deadline = Date.now() + 10_000;
+		while (!fake.reports.length && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+		const report = fake.reports[0];
+		expect(report).toMatchObject({
+			schema: 1,
+			event: 'installed',
+			site_url: directus.url,
+			plugin: { name: 'Directus-Supertext-Translation' },
+			system: { name: 'Directus', version: '12.5.0' },
+			runtime: { name: 'Node.js' },
+			api_key_configured: true,
+			api_key_check: { status: 'ok', http_status: 200 },
+			callback: { url: `${directus.url}/supertext/ping` },
+		});
+		expect(JSON.stringify(fake.reports)).not.toContain('it-key');
+		const status = await admin.get('/supertext/status');
+		expect(status.json.data.reports).toMatchObject({ enabled: true, check: { status: 'ok' } });
 	});
 });

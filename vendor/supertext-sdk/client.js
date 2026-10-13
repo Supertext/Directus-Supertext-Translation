@@ -12,6 +12,7 @@ import { errorForFileStatus, errorForStatus, SupertextError } from './errors.js'
 import { build, parse } from './html-document.js';
 import { encodeMultipart } from './multipart.js';
 import { source as sourceCode, target as targetCode } from './language-codes.js';
+import { apiKeyCheckFromError, apiKeyFingerprint, isoSeconds, KEY_CHECK_TIMEOUT_MS } from './api-key-check.js';
 export const LIVE_BASE_URL = 'https://api.supertext.com/v1/';
 const SDK_USER_AGENT = 'supertext-sdk-typescript';
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,9 +42,27 @@ export class SupertextClient {
         this.#sleep = options.sleep ?? defaultSleep;
         this.#now = options.now ?? Date.now;
     }
-    /** Cost-free check that the API key is accepted (`GET features`). */
+    /** Cost-free check that the API key is accepted (`GET features`). Throws a `SupertextError` if not. */
     async validateApiKey() {
         await this.#request('GET', 'features');
+    }
+    /**
+     * The automatic API key check (Commando Center protocol): `GET features` with a
+     * 10 s timeout, mapped to `ok`, `invalid`, `missing`, `unreachable` or `error`.
+     * Never throws. A blank key gives `missing` without a request.
+     */
+    async checkApiKey() {
+        const checkedAt = isoSeconds(this.#now());
+        const fingerprint = apiKeyFingerprint(this.#apiKey);
+        if (fingerprint === '')
+            return { status: 'missing', checkedAt, httpStatus: null, errorCode: null, fingerprint };
+        try {
+            const status = await this.#request('GET', 'features', undefined, Math.min(KEY_CHECK_TIMEOUT_MS, this.requestTimeoutMs), true);
+            return { status: 'ok', checkedAt, httpStatus: Number(status), errorCode: null, fingerprint };
+        }
+        catch (error) {
+            return { ...apiKeyCheckFromError(error), checkedAt, fingerprint };
+        }
     }
     /** Uploads an HTML document; returns the file id. Language codes are normalized (`de` → `de-DE`, `en-US` → `en`). */
     async submit(html, targetLang, options = {}) {
@@ -128,7 +147,7 @@ export class SupertextClient {
         return isMap ? new Map(out) : Object.fromEntries(out);
     }
     /** One HTTP request with auth, retries on 429 and error mapping. Returns the body text of a 2xx answer. */
-    async #request(method, path, form) {
+    async #request(method, path, form, timeoutMs = this.requestTimeoutMs, returnStatus = false) {
         const authorization = authHeader(this.#apiKey); // throws missing_api_key before anything is sent
         // Never let the key reach a message, even if a proxy echoes the request back.
         const key = authorization.slice('Supertext-Auth-Key '.length);
@@ -140,7 +159,7 @@ export class SupertextClient {
             let response;
             let text;
             try {
-                const init = { method, headers, signal: AbortSignal.timeout(this.requestTimeoutMs) };
+                const init = { method, headers, signal: AbortSignal.timeout(timeoutMs) };
                 if (form)
                     init.body = form.body;
                 response = await this.#fetch(this.baseUrl + path, init);
@@ -155,7 +174,7 @@ export class SupertextClient {
             }
             if (!response.ok)
                 throw errorForStatus(response.status, scrub(text));
-            return text;
+            return returnStatus ? String(response.status) : text;
         }
     }
 }

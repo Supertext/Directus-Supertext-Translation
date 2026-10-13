@@ -1,22 +1,34 @@
 import { defineEndpoint } from '@directus/extensions-sdk';
 import { readConfig } from '../api/config.js';
 import { findTranslationsRelation, loadItem, translateItem, TranslateError } from '../api/translator.js';
-import { SupertextClient, SupertextError } from '../shared/supertext-client.js';
+import { SupertextClient } from '../shared/supertext-client.js';
 import { politenessFor, targetCode } from '../shared/languages.js';
 import { extensionVersion } from '../api/version.js';
+import { Reporting, siteUrl } from '../api/reporting.js';
 
 /**
  * /supertext/info       GET  ?collection=&item=&field=   languages, fields, whether a key is set
  * /supertext/translate  POST { collection, item, field?, source?, targets?, fields?, save? }
  * /supertext/status     GET  version, configuration and languages (admins; the Supertext module)
  * /supertext/test       POST cost-free check of the API key (admins)
+ * /supertext/ping       GET  ?challenge=   public: the Commando Center's reachability check
  *
  * Both run with the signed-in user's permissions. `save` defaults to false: the item
  * form puts the translations into the form and the editor saves them.
  */
 export default defineEndpoint({
 	id: 'supertext',
-	handler: (router, { services, getSchema, env, logger }) => {
+	handler: (router, { services, getSchema, env, logger, database }) => {
+		const reporting = new Reporting({ env, database, logger });
+		/** Version report and key check on back-end requests (in the background, see api/reporting.ts). */
+		const report = (req: any, config: ReturnType<typeof readConfig>) => reporting.inBackground('onRequest', config, siteUrl(env, req));
+
+		// Public, no login: the Commando Center checks that the site is reachable. Only while version reports are on.
+		router.get('/ping', (req: any, res: any) => {
+			const answer = reporting.ping(req.query?.challenge);
+			res.status(answer.status).set(answer.headers).send(answer.body);
+		});
+
 		const fail = (res: any, error: unknown) => {
 			if (error instanceof TranslateError) {
 				return res.status(error.status).json({ errors: [{ message: error.message, extensions: { code: error.code, key: error.key, values: error.values } }] });
@@ -59,9 +71,11 @@ export default defineEndpoint({
 						languages.push({ collection, code, name: String(row.name ?? code), target: targetCode(code, config.languageMap), politeness: politenessFor(code, config.politeness) });
 					}
 				}
+				report(req, config);
 				res.json({
 					data: {
 						version: extensionVersion(),
+						reports: { enabled: reporting.enabled, check: await reporting.lastCheck() },
 						configured: config.apiKey !== '',
 						baseUrl: config.baseUrl,
 						concurrency: config.concurrency,
@@ -78,19 +92,10 @@ export default defineEndpoint({
 			try {
 				requireAdmin(req);
 				const config = readConfig(env);
-				if (!config.apiKey) throw new TranslateError(
-						'No Supertext API key is configured (SUPERTEXT_API_KEY). No Supertext account yet? Create one at https://www.supertext.com/person/en/account/signin. Generate your API key at https://www.supertext.com/en/integrations/api (supertext.com → Integrations → API; requires the Admin role).',
-						400,
-						'not_configured',
-					);
-				try {
-					await new SupertextClient({ apiKey: config.apiKey, baseUrl: config.baseUrl }).validateApiKey();
-				} catch (error) {
-					// Supertext's own 401/403 must not reach the app as a Directus 401 (that signs the admin out).
-					if (error instanceof SupertextError) throw TranslateError.fromSupertext(error);
-					throw error;
-				}
-				res.json({ data: { ok: true } });
+				// The automatic key check (SDK): ok, invalid, missing, unreachable or error. Also reports a changed status.
+				const result = await reporting.run('testConnection', config, siteUrl(env, req));
+				const check = result?.check ?? (await new SupertextClient({ apiKey: config.apiKey, baseUrl: config.baseUrl }).checkApiKey());
+				res.json({ data: { ok: check.status === 'ok', check } });
 			} catch (error) {
 				fail(res, error);
 			}
@@ -103,6 +108,7 @@ export default defineEndpoint({
 				if (!collection) throw new TranslateError('"collection" is required.');
 				const schema = req.schema ?? (await getSchema());
 				const config = readConfig(env);
+				report(req, config);
 				const data = await loadItem(services, schema, req.accountability, collection, item && item !== '+' ? item : null, field || undefined);
 				res.json({
 					data: {
@@ -126,11 +132,12 @@ export default defineEndpoint({
 					throw new TranslateError('"collection" and "item" are required.');
 				}
 				const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : undefined);
+				const config = readConfig(env);
 				const result = await translateItem({
 					services,
 					schema: req.schema ?? (await getSchema()),
 					accountability: req.accountability,
-					config: readConfig(env),
+					config,
 					collection: body.collection,
 					item: body.item,
 					field: typeof body.field === 'string' && body.field ? body.field : undefined,
@@ -142,6 +149,9 @@ export default defineEndpoint({
 				for (const r of result.results) {
 					if (!r.ok) logger.warn(`[supertext] ${body.collection}/${body.item} → ${r.language}: ${r.error}`);
 				}
+				const rejected = result.results.find((r) => !r.ok && r.code === 'authentication_failure');
+				if (rejected) reporting.inBackground('authenticationFailed', config, siteUrl(env, req), Number(rejected.values?.status) || 401);
+				else report(req, config);
 				res.json({ data: result });
 			} catch (error) {
 				fail(res, error);

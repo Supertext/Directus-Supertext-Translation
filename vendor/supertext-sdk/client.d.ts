@@ -1,4 +1,5 @@
 import { type Segment } from './html-document.js';
+import { type ApiKeyCheck } from './api-key-check.js';
 export declare const LIVE_BASE_URL = "https://api.supertext.com/v1/";
 /** `more`: formal address (Sie, vous, Lei). `less`: informal (du, tu). `default`: Supertext decides. */
 export type Politeness = 'default' | 'more' | 'less';
@@ -44,8 +45,14 @@ export declare class SupertextClient {
     readonly maxRetries: number;
     /** A blank key doesn't throw here: the first request throws `missing_api_key` without sending anything. */
     constructor(apiKey: string, options?: SupertextClientOptions);
-    /** Cost-free check that the API key is accepted (`GET features`). */
+    /** Cost-free check that the API key is accepted (`GET features`). Throws a `SupertextError` if not. */
     validateApiKey(): Promise<void>;
+    /**
+     * The automatic API key check (Commando Center protocol): `GET features` with a
+     * 10 s timeout, mapped to `ok`, `invalid`, `missing`, `unreachable` or `error`.
+     * Never throws. A blank key gives `missing` without a request.
+     */
+    checkApiKey(): Promise<ApiKeyCheck>;
     /** Uploads an HTML document; returns the file id. Language codes are normalized (`de` → `de-DE`, `en-US` → `en`). */
     submit(html: string, targetLang: string, options?: TranslateOptions): Promise<string>;
     /** The file's status: `translating`, `done`, `error`, `limit_exceeded`, `deleted` (others are possible). */

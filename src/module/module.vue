@@ -26,11 +26,25 @@
 					{{ t('module.noAccount') }} <a :href="signupUrl" target="_blank" rel="noopener">{{ t('module.createAccount') }}</a>.
 					{{ t('module.generateKey') }} <a :href="apiKeyUrl" target="_blank" rel="noopener">{{ t('module.keyPath') }}</a> {{ t('module.adminRole') }}
 				</p>
+				<dl>
+					<dt>{{ t('module.keyCheck') }}</dt>
+					<dd>
+						<template v-if="check">
+							<span :class="check.status === 'ok' ? 'ok' : 'fail'"><v-icon :name="check.status === 'ok' ? 'check' : 'error'" small /> {{ checkText(check) }}</span>
+							<div class="hint">{{ t('module.checkedAt', { time: when(check.checkedAt) }) }}</div>
+						</template>
+						<template v-else>{{ t('module.notChecked') }}</template>
+					</dd>
+				</dl>
 				<div class="test">
 					<v-button secondary :loading="testing" @click="test">{{ t('module.test') }}</v-button>
-					<span v-if="tested === true" class="ok"><v-icon name="check" small /> {{ t('module.ok') }}</span>
-					<span v-else-if="tested" class="fail"><v-icon name="error" small /> {{ tested }}</span>
+					<span v-if="tested" class="fail"><v-icon name="error" small /> {{ tested }}</span>
 				</div>
+				<dl>
+					<dt>{{ t('module.reports') }}</dt>
+					<dd>{{ status.reports?.enabled ? t('module.reportsOn') : t('module.reportsOff') }}</dd>
+				</dl>
+				<p class="hint">{{ t('module.reportsHelp') }}</p>
 
 				<h2 class="type-title">{{ t('module.languages') }}</h2>
 				<p class="hint">{{ t('module.languagesHint') }}</p>
@@ -54,7 +68,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useApi } from '@directus/extensions-sdk';
-import { apiErrorText, t } from '../i18n/index.js';
+import { apiErrorText, currentLanguage, t, type MessageKey } from '../i18n/index.js';
 
 const signupUrl = 'https://www.supertext.com/person/en/account/signin';
 const apiKeyUrl = 'https://www.supertext.com/en/integrations/api';
@@ -65,11 +79,21 @@ const api = useApi();
 const status = ref<any>(null);
 const error = ref('');
 const testing = ref(false);
-const tested = ref<true | string | null>(null);
+const tested = ref<string | null>(null);
+type KeyCheck = { status: 'ok' | 'invalid' | 'missing' | 'unreachable' | 'error'; checkedAt: string; httpStatus: number | null };
+const check = ref<KeyCheck | null>(null);
+
+/** The key check result in the user's language (texts from the Commando Center's guide). */
+const checkText = (c: KeyCheck) => t(`keycheck.${c.status}` as MessageKey, { status: c.httpStatus ?? '' });
+const when = (iso: string) => {
+	const date = new Date(iso);
+	return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(currentLanguage());
+};
 
 onMounted(async () => {
 	try {
 		status.value = (await api.get('/supertext/status')).data.data;
+		check.value = status.value?.reports?.check ?? null;
 	} catch (e: any) {
 		error.value = apiErrorText(e);
 	}
@@ -79,8 +103,7 @@ async function test() {
 	testing.value = true;
 	tested.value = null;
 	try {
-		await api.post('/supertext/test');
-		tested.value = true;
+		check.value = (await api.post('/supertext/test')).data.data.check;
 	} catch (e: any) {
 		tested.value = apiErrorText(e);
 	} finally {

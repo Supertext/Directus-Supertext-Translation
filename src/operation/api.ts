@@ -1,6 +1,9 @@
 import { defineOperationApi } from '@directus/extensions-sdk';
 import { readConfig } from '../api/config.js';
 import { translateItem, type TranslateResult } from '../api/translator.js';
+import { Reporting, siteUrl } from '../api/reporting.js';
+
+let reporting: Reporting | null = null;
 
 export type Options = {
 	collection?: string;
@@ -24,7 +27,8 @@ const list = (v: unknown): string[] | undefined => {
  */
 export default defineOperationApi<Options>({
 	id: 'supertext-translate-flow',
-	handler: async (options, { services, getSchema, env, data, accountability, logger }) => {
+	handler: async (options, { services, getSchema, env, data, accountability, logger, database }) => {
+		reporting ??= new Reporting({ env, database, logger });
 		const trigger = (data as any)?.$trigger ?? {};
 		const collection = options.collection || trigger.collection || trigger.body?.collection;
 		const raw = options.item ?? trigger.keys ?? trigger.key ?? trigger.body?.keys;
@@ -56,6 +60,10 @@ export default defineOperationApi<Options>({
 			for (const r of result.results) if (!r.ok) failures.push(`${collection}/${item} → ${r.language}: ${r.error}`);
 		}
 		for (const f of failures) logger.warn(`[supertext] ${f}`);
+		// Version report and key check (background; a rejected key marks the check invalid).
+		const rejected = done.flatMap((r) => r.results).find((r) => !r.ok && r.code === 'authentication_failure');
+		if (rejected) reporting.inBackground('authenticationFailed', config, siteUrl(env), Number(rejected.values?.status) || 401);
+		else reporting.inBackground('onRequest', config, siteUrl(env));
 		if (failures.length) throw new Error(`Supertext: ${failures.length} translation(s) failed. ${failures.join(' | ')}`);
 		return done.map((r) => ({ item: r.item, source: r.source, translated: r.results.filter((x) => x.ok).map((x) => x.language) }));
 	},

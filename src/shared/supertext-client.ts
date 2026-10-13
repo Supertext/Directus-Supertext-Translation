@@ -12,7 +12,7 @@
  * No Directus imports here (tested on its own).
  */
 import { LIVE_BASE_URL, SupertextClient as SdkClient, SupertextError } from 'supertext-sdk'
-import type { ErrorCode, FetchLike, Politeness } from 'supertext-sdk'
+import type { ApiKeyCheck, ErrorCode, FetchLike, Politeness } from 'supertext-sdk'
 
 export { SupertextError }
 export type { Politeness }
@@ -75,5 +75,10 @@ export class SupertextClient {
   /** Cost-free check that the API key is accepted (`GET features`). */
   validateApiKey(): Promise<void> {
     return this.sdk.validateApiKey()
+  }
+
+  /** The automatic key check: ok, invalid, missing, unreachable or error. Never throws. */
+  checkApiKey(): Promise<ApiKeyCheck> {
+    return this.sdk.checkApiKey()
   }
 }

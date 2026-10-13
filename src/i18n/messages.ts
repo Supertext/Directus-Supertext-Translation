@@ -105,6 +105,18 @@ export const en = {
 	'supertext.transport_error': 'Could not reach Supertext.',
 	'supertext.unexpected_status': 'Supertext sent an unexpected status code {status}.',
 	'supertext.not_found': 'The requested Supertext resource was not found.',
+	'module.keyCheck': 'API key check',
+	'module.checkedAt': 'checked {time}',
+	'module.notChecked': 'Not checked yet.',
+	'module.reports': 'Send version information to Supertext',
+	'module.reportsOn': 'On',
+	'module.reportsOff': 'Off (SUPERTEXT_VERSION_REPORTS=0)',
+	'module.reportsHelp': 'Sends the site URL and the versions of this extension, Directus and the runtime to Supertext after an update and when the API key changes, so Supertext support can see which version you run. No content, no API key and no personal data are sent. Set SUPERTEXT_VERSION_REPORTS=0 to turn it off.',
+	'keycheck.ok': 'API key checked: the connection to Supertext works.',
+	'keycheck.invalid': 'Supertext rejected the API key. Check that you copied the whole key, or generate a new one at supertext.com → Integrations → API (requires the Admin role). No Supertext account yet? Create one at supertext.com.',
+	'keycheck.missing': 'No API key is set yet. No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role).',
+	'keycheck.unreachable': "The API key couldn't be checked because Supertext can't be reached. The settings are saved; check again later.",
+	'keycheck.error': "The API key couldn't be checked: Supertext answered with an error ({status}). The settings are saved; check again later.",
 };
 
 export type MessageKey = keyof typeof en;
@@ -210,6 +222,18 @@ export const de: Messages = {
 	'supertext.transport_error': 'Supertext ist nicht erreichbar.',
 	'supertext.unexpected_status': 'Supertext hat einen unerwarteten Statuscode {status} gesendet.',
 	'supertext.not_found': 'Die angeforderte Supertext-Ressource wurde nicht gefunden.',
+	'module.keyCheck': 'Prüfung des API-Schlüssels',
+	'module.checkedAt': 'geprüft {time}',
+	'module.notChecked': 'Noch nicht geprüft.',
+	'module.reports': 'Versionsinformationen an Supertext senden',
+	'module.reportsOn': 'Ein',
+	'module.reportsOff': 'Aus (SUPERTEXT_VERSION_REPORTS=0)',
+	'module.reportsHelp': 'Sendet die URL der Website sowie die Versionen dieser Erweiterung, von Directus und der Laufzeitumgebung an Supertext, nach einem Update und wenn sich der API-Schlüssel ändert. So sieht der Supertext-Support, welche Version Sie einsetzen. Es werden keine Inhalte, kein API-Schlüssel und keine Personendaten übertragen. Mit SUPERTEXT_VERSION_REPORTS=0 schalten Sie es aus.',
+	'keycheck.ok': 'API-Schlüssel geprüft: Die Verbindung zu Supertext funktioniert.',
+	'keycheck.invalid': 'Supertext hat den API-Schlüssel abgelehnt. Prüfen Sie, ob Sie den ganzen Schlüssel kopiert haben, oder erstellen Sie einen neuen unter supertext.com → Integrations → API (erfordert die Rolle Admin). Noch kein Supertext-Konto? Erstellen Sie eines auf supertext.com.',
+	'keycheck.missing': 'Es ist noch kein API-Schlüssel eingetragen. Noch kein Supertext-Konto? Erstellen Sie eines auf supertext.com. Ihren API-Schlüssel erstellen Sie unter supertext.com → Integrations → API (erfordert die Rolle Admin).',
+	'keycheck.unreachable': 'Der API-Schlüssel konnte nicht geprüft werden, weil Supertext nicht erreichbar ist. Die Einstellungen sind gespeichert; prüfen Sie ihn später erneut.',
+	'keycheck.error': 'Der API-Schlüssel konnte nicht geprüft werden: Supertext hat mit einem Fehler geantwortet ({status}). Die Einstellungen sind gespeichert; prüfen Sie ihn später erneut.',
 };
 
 export const fr: Messages = {
@@ -312,6 +336,18 @@ export const fr: Messages = {
 	'supertext.transport_error': 'Impossible de joindre Supertext.',
 	'supertext.unexpected_status': 'Supertext a renvoyé un code d’état inattendu : {status}.',
 	'supertext.not_found': 'La ressource Supertext demandée est introuvable.',
+	'module.keyCheck': 'Vérification de la clé API',
+	'module.checkedAt': 'vérifiée {time}',
+	'module.notChecked': 'Pas encore vérifiée.',
+	'module.reports': 'Envoyer les informations de version à Supertext',
+	'module.reportsOn': 'Activé',
+	'module.reportsOff': 'Désactivé (SUPERTEXT_VERSION_REPORTS=0)',
+	'module.reportsHelp': "Envoie à Supertext l'URL du site ainsi que les versions de cette extension, de Directus et de l'environnement d'exécution après une mise à jour et lorsque la clé API change. Le support Supertext voit ainsi quelle version vous utilisez. Aucun contenu, aucune clé API et aucune donnée personnelle ne sont transmis. Définissez SUPERTEXT_VERSION_REPORTS=0 pour le désactiver.",
+	'keycheck.ok': 'Clé API vérifiée : la connexion à Supertext fonctionne.',
+	'keycheck.invalid': 'Supertext a refusé la clé API. Vérifiez que vous avez copié la clé entière ou générez-en une nouvelle sur supertext.com → Integrations → API (rôle Admin requis). Pas encore de compte Supertext ? Créez-en un sur supertext.com.',
+	'keycheck.missing': "Aucune clé API n'est encore saisie. Pas encore de compte Supertext ? Créez-en un sur supertext.com. Générez votre clé API sur supertext.com → Integrations → API (rôle Admin requis).",
+	'keycheck.unreachable': "La clé API n'a pas pu être vérifiée, car Supertext n'est pas joignable. Les paramètres sont enregistrés ; réessayez plus tard.",
+	'keycheck.error': "La clé API n'a pas pu être vérifiée : Supertext a répondu par une erreur ({status}). Les paramètres sont enregistrés ; réessayez plus tard.",
 };
 
 export const it: Messages = {
@@ -414,6 +450,18 @@ export const it: Messages = {
 	'supertext.transport_error': 'Impossibile raggiungere Supertext.',
 	'supertext.unexpected_status': 'Supertext ha inviato un codice di stato inatteso: {status}.',
 	'supertext.not_found': 'La risorsa Supertext richiesta non è stata trovata.',
+	'module.keyCheck': 'Verifica della chiave API',
+	'module.checkedAt': 'verificata {time}',
+	'module.notChecked': 'Non ancora verificata.',
+	'module.reports': 'Inviare le informazioni sulla versione a Supertext',
+	'module.reportsOn': 'Attivo',
+	'module.reportsOff': 'Disattivato (SUPERTEXT_VERSION_REPORTS=0)',
+	'module.reportsHelp': "Invia a Supertext l'URL del sito e le versioni di questa estensione, di Directus e dell'ambiente di esecuzione dopo un aggiornamento e quando la chiave API cambia. In questo modo l'assistenza Supertext vede quale versione utilizza. Non vengono trasmessi contenuti, chiavi API né dati personali. Imposti SUPERTEXT_VERSION_REPORTS=0 per disattivarlo.",
+	'keycheck.ok': 'Chiave API verificata: la connessione a Supertext funziona.',
+	'keycheck.invalid': "Supertext ha rifiutato la chiave API. Verifichi di aver copiato l'intera chiave oppure ne generi una nuova su supertext.com → Integrations → API (richiede il ruolo Admin). Non ha ancora un account Supertext? Ne crei uno su supertext.com.",
+	'keycheck.missing': 'Non è ancora stata inserita alcuna chiave API. Non ha ancora un account Supertext? Ne crei uno su supertext.com. Generi la Sua chiave API su supertext.com → Integrations → API (richiede il ruolo Admin).',
+	'keycheck.unreachable': 'Non è stato possibile verificare la chiave API perché Supertext non è raggiungibile. Le impostazioni sono salvate; riprovi più tardi.',
+	'keycheck.error': 'Non è stato possibile verificare la chiave API: Supertext ha risposto con un errore ({status}). Le impostazioni sono salvate; riprovi più tardi.',
 };
 
 export const messages: Record<'en' | 'de' | 'fr' | 'it', Messages> = { en, de, fr, it };

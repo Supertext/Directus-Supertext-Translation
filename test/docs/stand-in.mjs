@@ -22,6 +22,8 @@ http
 			res.end(type === 'application/json' ? JSON.stringify(body) : body);
 		};
 		if (path === '/features') return send(200, {});
+		// Stands in for the Commando Center too (SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report), so screenshots report nothing.
+		if (req.method === 'POST' && path === '/report') return send(202, { ok: true });
 		if (req.method === 'POST' && path === '/translate/ai/file') {
 			const chunks = [];
 			for await (const chunk of req) chunks.push(chunk);

@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+
+- Automatic API key check: when the key in `SUPERTEXT_API_KEY` is new or changed, on *Test connection* and when Supertext rejects the key during a translation. The Supertext page shows the latest result with its time (*the connection works*, *rejected*, *no key*, *Supertext can't be reached*, *error*) in English, German, French and Italian.
+- *Send version information to Supertext* (on by default, `SUPERTEXT_VERSION_REPORTS=0` turns it off): after an update and when the key check result changes, the extension sends the site URL, the extension, Directus, Node.js and SDK versions, whether a key is set, the key check result and the ping address to Supertext. No content, no API key and no personal data. Shown on the Supertext page.
+- Public ping endpoint `/supertext/ping` that only echoes Supertext's challenge, so Supertext can check the site is reachable (404 with version reports off).
+- The extension stores this state in a new table `supertext_state` (created automatically).
+
+### Changed
+
+- Bundled Supertext SDK 0.1.0 (commit `232c478`), which brings the key check and the version reports.
+- `POST /supertext/test` returns the key check (`{ ok, check }`) instead of an error for a rejected key.
+
 ### Changed
 
 - The connection to Supertext now uses the shared [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (TypeScript SDK 0.1.0), bundled into the extension's build, so nothing else needs installing. Translation works as before; an unsupported language pair now has its own message (*Supertext does not support this language pair*) in all four languages. An unknown language (e.g. `xx-YY`) is now reported as an unsupported language pair too, not as "resource not found" (Supertext answers it with HTTP 404).

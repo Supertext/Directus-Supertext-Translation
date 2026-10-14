@@ -29,7 +29,7 @@ src/
     codecs.ts              field value ⇄ pieces: text, HTML (block by block), markdown (line/block based)
     document.ts            HTML document with data-st-id elements (the SDK's HtmlDocument)
     supertext-client.ts    the extension's Supertext client on top of the Supertext SDK
-    languages.ts           target/source codes (the SDK's LanguageCodes), politeness
+    languages.ts           target/source codes (the SDK's Languages), politeness
 vendor/supertext-sdk/      Supertext SDK (TypeScript, built), bundled into dist/; see *Supertext SDK*
 scripts/vendor-sdk.sh      updates vendor/supertext-sdk
 demo/                      Railway demo (Dockerfile, start script, demo setup hook)
@@ -111,7 +111,7 @@ Supertext accepts exactly the codes its `GET features` lists (the SDK's `Languag
 `src/shared/languages.ts` turns Directus language codes into Supertext codes with the SDK's `Languages`, **without guessing**:
 
 - `targetCode(code, languageMap)`: the `SUPERTEXT_LANGUAGE_MAP` entry wins (sent as it is); else a Directus code that equals a Supertext code apart from case and `_`/`-` (`de-CH`, `fr_ch` → `fr-CH`, `es`); else `SupertextError('unsupported_language')`, which the translator reports for that language (`supertext.unsupported_language` with `{language}`) without calling Supertext. There are no default regions: `de` must be mapped (to `de-DE`, `de-CH` or `de-AT`).
-- `sourceCode(code, languageMap)`: the mapping, else the Supertext source for the code (`en-US` → `en`), else `unsupported_language`.
+- `sourceCode(code, languageMap)`: the mapping's value in its source form (`{"de":"de-CH"}` → `de`, so one mapping serves both directions), else the Supertext source for the code (`en-US` → `en`), else `unsupported_language`.
 - The Supertext page shows the code per language, *Not mapped* for the others, and warns when a tone is set for a target that has none.
 
 The stand-ins (`test/fakeSupertext.ts`, `test/integration/fake-supertext-server.ts`, `test/docs/stand-in.mjs`) reject bare targets and regional sources like the real API.

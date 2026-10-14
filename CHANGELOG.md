@@ -17,6 +17,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Bundled Supertext SDK 0.2.0 (commit `c66cb4d`): the key check, the version reports and the API's language list (`v1` namespace).
 - `POST /supertext/test` returns the key check (`{ ok, check }`) instead of an error for a rejected key.
 
+### Fixed
+
+- Bundled Supertext SDK 0.2.1 (commit `eeba8fa`): one `SUPERTEXT_LANGUAGE_MAP` serves both directions. A mapped language is sent as a source in its source form (`{"de":"de-CH"}` translates from `de`), so English as the source no longer fails with an `{"en":"en-US"}` mapping.
+
 ### Changed
 
 - The connection to Supertext now uses the shared [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (TypeScript SDK 0.1.0), bundled into the extension's build, so nothing else needs installing. Translation works as before; an unsupported language pair now has its own message (*Supertext does not support this language pair*) in all four languages. An unknown language (e.g. `xx-YY`) is now reported as an unsupported language pair too, not as "resource not found" (Supertext answers it with HTTP 404).

@@ -101,8 +101,8 @@ Each Directus language needs a Supertext language. Supertext accepts exactly the
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
 | All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
 
-- A Directus code that **is** one of these codes (apart from upper/lower case and `_`/`-`) is used as it is: `de-CH`, `fr_ch`, `es`. The source language is sent without region (`en-US` → `en`).
-- **Every other code needs an entry in `SUPERTEXT_LANGUAGE_MAP`**, e.g. `{"de":"de-CH","en":"en-US","zh-CN":"zh-Hans"}`. The plugin never guesses a region: an unmapped language is reported as *has no Supertext language yet* and nothing is sent for it.
+- A Directus code that **is** one of these codes (apart from upper/lower case and `_`/`-`) is used as it is: `de-CH`, `fr_ch`, `es`. The source language is always sent without region (`en-US` → `en`), mapped or not.
+- **Every other code needs an entry in `SUPERTEXT_LANGUAGE_MAP`**, e.g. `{"de":"de-CH","en":"en-US","zh-CN":"zh-Hans"}`. The plugin never guesses a region: an unmapped language is reported as *has no Supertext language yet* and nothing is sent for it. One mapping serves both directions: with `{"de":"de-CH"}`, German is translated into `de-CH` and from `de`.
 - Formal/informal (`SUPERTEXT_POLITENESS`) isn't offered for English, Swiss German, Romansh, Albanian and Serbian; leave those on the default tone.
 
 The Supertext page shows the code each language is sent as, and *Not mapped* for languages that still need an entry.

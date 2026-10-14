@@ -110,6 +110,12 @@ describe('language codes (no guessing)', () => {
     expect(targetCode('de', { de: 'de-AT' })).toBe('de-AT')
     expect(sourceCode('ch', { ch: 'de' })).toBe('de')
   })
+  it('uses one mapping for both directions', () => {
+    const map = { de: 'de-CH', en: 'en-US' }
+    expect(targetCode('de', map)).toBe('de-CH')
+    expect(sourceCode('de', map)).toBe('de')
+    expect(sourceCode('en', map)).toBe('en')
+  })
   it('knows which targets offer formal/informal', () => {
     expect(supportsPoliteness('de-CH')).toBe(true)
     expect(supportsPoliteness('en-US')).toBe(false)

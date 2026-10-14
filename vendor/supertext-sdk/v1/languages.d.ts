@@ -22,7 +22,10 @@ export declare function matchSource(code: string): string | null;
  * exact match, else `SupertextError('unsupported_language')` (nothing is sent).
  */
 export declare function target(code: string, mapping?: LanguageMapping): string;
-/** The source code to send: the mapping's value, else `matchSource`, else `unsupported_language`. `''` stays `''` (auto-detect). */
+/**
+ * The source code to send: the mapping's value in its source form (`de-CH` → `de`; an unknown value as it is),
+ * else `matchSource`, else `unsupported_language`. `''` stays `''` (auto-detect).
+ */
 export declare function source(code: string, mapping?: LanguageMapping): string;
 /** Whether a supported target offers formal/informal; null for a code that isn't in the list. */
 export declare function supportsPoliteness(targetCode: string): boolean | null;

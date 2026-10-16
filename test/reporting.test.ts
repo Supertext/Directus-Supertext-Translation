@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { publicUrl, Reporting, siteUrl, versionReportsEnabled } from '../src/api/reporting.js';
 import { readConfig } from '../src/api/config.js';
+import { SDK_VERSION } from 'supertext-sdk';
+import { apiKeyFingerprint } from 'supertext-sdk/v1';
 
 /** Just enough of Knex for the state table: hasTable/createTable and one key/value row. */
 function fakeDatabase() {
@@ -61,6 +63,7 @@ describe('Reporting', () => {
 		expect(first?.event).toBe('installed');
 		expect(first?.check?.status).toBe('ok');
 		expect(reports[0]).toMatchObject({ event: 'installed', plugin: { name: 'Directus-Supertext-Translation' }, system: { name: 'Directus' }, callback: { url: 'https://cms.example.ch/supertext/ping' } });
+		expect(reports[0].sdk_version).toBe(SDK_VERSION);
 		expect(JSON.stringify(reports)).not.toContain('k1');
 		expect(rows.get('reporter')).toContain('"reportedKeyStatus":"ok"');
 		// Nothing changed: no second report, no second key check.
@@ -68,6 +71,19 @@ describe('Reporting', () => {
 		expect(second?.event).toBeNull();
 		expect(reports).toHaveLength(1);
 		expect((await reporting.lastCheck())?.status).toBe('ok');
+	});
+
+	it('keeps the state the SDK 0.2 reporter stored: no new installed report', async () => {
+		const { db, rows } = fakeDatabase();
+		const { fetch, reports } = fakeFetch();
+		const reporting = new Reporting({ env: {}, database: db, logger, reporterOverrides: { fetch, reportUrl: 'https://center.test/r', clientOptions: { fetch } } });
+		const versions = reporting.reporter(config, 'https://cms.example.ch').versions;
+		const keyCheck = { status: 'ok', checkedAt: '2026-10-01T08:00:00Z', httpStatus: 200, errorCode: null, fingerprint: apiKeyFingerprint('k1') };
+		await reporting.store.save({ reportedVersions: versions, reportedKeyStatus: 'ok', lastFailureAt: null, keyCheck });
+		const result = await reporting.run('onRequest', config, 'https://cms.example.ch');
+		expect(result?.event).toBeNull();
+		expect(reports).toHaveLength(0);
+		expect(JSON.parse(rows.get('reporter')!)).toEqual({ reportedVersions: versions, reportedKeyStatus: 'ok', lastFailureAt: null, keyCheck });
 	});
 
 	it('marks the key invalid after a 401 and reports the change once', async () => {

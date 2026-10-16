@@ -1,8 +1,9 @@
 /**
  * Version reports to the Supertext Commando Center, the automatic API key check and the
  * callback ping (Commando-Center-Supertext-Translation → docs/DEVELOPER.md → Report protocol).
- * The protocol is the SDK's (`InstallationReporter`, `pingResponse`); this file only gives it
- * what Directus knows: the site URL, the Directus and extension versions, and a place to keep
+ * The protocol is Supertext Plugin Health's (`InstallationReporter`, `pingResponse`; bundled
+ * from vendor/supertext-plugin-health), the key check the Supertext SDK's (`checkApiKey()`,
+ * `apiKeyFingerprint`). This file only gives them what Directus knows: the site URL, the Directus and extension versions, and a place to keep
  * the reporter's state (the table `supertext_state`, created on first use).
  *
  * Directus has no settings form for the extension (everything is in the environment), so
@@ -13,7 +14,9 @@ import { createRequire } from 'node:module';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Knex } from 'knex';
-import { InstallationReporter, pingResponse, reporterState, reportsEnabled, type ApiKeyCheck, type PingResponse, type ReporterResult, type ReporterState } from 'supertext-sdk/v1';
+import { InstallationReporter, pingResponse, reporterState, reportsEnabled, type KeyCheck, type PingResponse, type ReporterOptions, type ReporterResult, type ReporterState } from 'supertext-plugin-health';
+import { SDK_VERSION } from 'supertext-sdk';
+import { apiKeyFingerprint, SupertextClient, type SupertextClientOptions } from 'supertext-sdk/v1';
 import type { SupertextConfig } from './config.js';
 import { extensionVersion } from './version.js';
 
@@ -119,8 +122,8 @@ export type ReportingContext = {
 	env: Env;
 	database: Knex;
 	logger: Logger;
-	/** For tests: options passed to the SDK reporter (fetch, report URL, clock, client options). */
-	reporterOverrides?: Partial<ConstructorParameters<typeof InstallationReporter>[0]>;
+	/** For tests: options passed to Plugin Health's reporter (fetch, report URL, clock) and the SDK client of the key check. */
+	reporterOverrides?: Partial<ReporterOptions> & { clientOptions?: SupertextClientOptions };
 };
 
 type Action = 'onRequest' | 'testConnection' | 'authenticationFailed';
@@ -147,14 +150,22 @@ export class Reporting {
 	}
 
 	reporter(config: SupertextConfig, url: string): InstallationReporter {
+		const { clientOptions: overrideClientOptions, ...overrides } = this.ctx.reporterOverrides ?? {};
+		const clientOptions: SupertextClientOptions = {
+			baseUrl: config.baseUrl,
+			userAgent: 'directus-extension-supertext-translation',
+			...(overrides.now ? { now: overrides.now } : {}),
+			...overrideClientOptions,
+		};
 		return new InstallationReporter({
 			enabled: this.enabled,
 			siteUrl: url,
 			plugin: { name: PLUGIN_NAME, version: extensionVersion() ?? '0.0.0' },
 			system: { name: 'Directus', version: directusVersion() },
+			sdkVersion: SDK_VERSION,
 			callbackUrl: `${url}/${PING_PATH}`,
-			clientOptions: { baseUrl: config.baseUrl, userAgent: 'directus-extension-supertext-translation' },
-			...this.ctx.reporterOverrides,
+			keyChecker: { check: (apiKey) => new SupertextClient(apiKey, clientOptions).checkApiKey(), fingerprint: apiKeyFingerprint },
+			...overrides,
 		});
 	}
 
@@ -189,7 +200,7 @@ export class Reporting {
 	}
 
 	/** The latest stored key check (for the status page). */
-	async lastCheck(): Promise<ApiKeyCheck | null> {
+	async lastCheck(): Promise<KeyCheck | null> {
 		try {
 			return (await this.store.load()).keyCheck;
 		} catch {

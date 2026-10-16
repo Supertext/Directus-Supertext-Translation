@@ -13,6 +13,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Changed
 
+- Version reports, the API key check result and the reachability ping now use [Supertext Plugin Health](https://github.com/Supertext/Commando-Center-Supertext-Translation/tree/main/plugin-health) 0.1.0 (bundled from `vendor/supertext-plugin-health`); Supertext SDK updated to 0.3.0. No change for sites: settings and stored state stay as they are.
 - **Languages are no longer guessed.** A Directus language code that is a Supertext code (`de-CH`, `fr-CH`, `es`, `zh-Hans`, apart from case and `_`/`-`) is used as it is; every other code needs an entry in `SUPERTEXT_LANGUAGE_MAP`. The default regions are gone: they were wrong for most languages (Supertext wants `es`, `sl`, `nl` without region, `zh-Hans` instead of `zh-CN`). An unmapped language gets the message *has no Supertext language yet* (four languages) and nothing is sent for it; the Supertext page marks it *Not mapped* and warns about a tone Supertext doesn't offer for a language. New message for *no formal/informal tone for this language*.
 - Bundled Supertext SDK 0.2.0 (commit `c66cb4d`): the key check, the version reports and the API's language list (`v1` namespace).
 - `POST /supertext/test` returns the key check (`{ ok, check }`) instead of an error for a rejected key.

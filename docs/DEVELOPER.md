@@ -20,7 +20,7 @@ src/
     config.ts              SUPERTEXT_* environment variables (raw process.env first: Directus splits values at commas)
     translator.ts          relation discovery, permission check, document per item, one request per language, save
     version.ts             extension version, read at runtime from package.json
-    reporting.ts           Commando Center: version reports, API key check, ping (the SDK's InstallationReporter),
+    reporting.ts           Commando Center: version reports, API key check, ping (Plugin Health's InstallationReporter),
                            state in the table supertext_state
   i18n/
     messages.ts            all UI strings in en/de/fr/it (app side)
@@ -31,7 +31,9 @@ src/
     supertext-client.ts    the extension's Supertext client on top of the Supertext SDK
     languages.ts           target/source codes (the SDK's Languages), politeness
 vendor/supertext-sdk/      Supertext SDK (TypeScript, built), bundled into dist/; see *Supertext SDK*
+vendor/supertext-plugin-health/  Supertext Plugin Health (TypeScript, built), bundled into dist/; see *Supertext Plugin Health*
 scripts/vendor-sdk.sh      updates vendor/supertext-sdk
+scripts/vendor-plugin-health.sh  updates vendor/supertext-plugin-health
 demo/                      Railway demo (Dockerfile, start script, demo setup hook)
 test/                      unit tests, integration tests (real Directus), docs screenshots
 ```
@@ -94,7 +96,7 @@ HTTP 429 (`RATE_LIMIT_EXCEEDED`) is retried up to 4 times (`Retry-After`, else 1
 
 ### Supertext SDK
 
-All Supertext calls go through the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (`sdk/typescript`, npm name `supertext-sdk`), the shared client of all Supertext plugins. It is a devDependency (`"supertext-sdk": "file:vendor/supertext-sdk"`) that `directus-extension build` bundles into `dist/`, so sites install nothing besides the extension. `vendor/supertext-sdk/` holds its built JavaScript and type declarations, a lean `package.json` (`node_modules/supertext-sdk` is a link to it), `COMMIT` (the SDK commit) and `VERSION` (the SDK version). Never edit it: fix the SDK repository and copy it again with `scripts/vendor-sdk.sh [ref]`, which builds the SDK, replaces the copy entirely and updates `package-lock.json` when the SDK version changed:
+All Supertext calls go through the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (`sdk/typescript`, npm name `supertext-sdk`), the shared client of all Supertext plugins: it provides the client and the API key check (`checkApiKey()`, `apiKeyFingerprint`, `SDK_VERSION`); version reports and the ping are in *Supertext Plugin Health* (below). It is a devDependency (`"supertext-sdk": "file:vendor/supertext-sdk"`) that `directus-extension build` bundles into `dist/`, so sites install nothing besides the extension. `vendor/supertext-sdk/` holds its built JavaScript and type declarations, a lean `package.json` (`node_modules/supertext-sdk` is a link to it), `COMMIT` (the SDK commit) and `VERSION` (the SDK version). Never edit it: fix the SDK repository and copy it again with `scripts/vendor-sdk.sh [ref]`, which builds the SDK, replaces the copy entirely and updates `package-lock.json` when the SDK version changed:
 
 ```bash
 scripts/vendor-sdk.sh                  # latest main of the SDK repository
@@ -103,6 +105,18 @@ SDK_DIR=/path/to/Supertext-API-SDK-and-Guide scripts/vendor-sdk.sh   # a local c
 ```
 
 Then run the unit and integration tests and note the update in `CHANGELOG.md`. Once the SDK is on npm, the devDependency points at the published version instead; it stays bundled. `src/shared/supertext-client.ts` wraps the SDK client (options in milliseconds, a `fetch` for tests, the User-Agent `supertext-sdk-typescript directus-extension-supertext-translation`).
+
+### Supertext Plugin Health
+
+[Supertext Plugin Health](https://github.com/Supertext/Commando-Center-Supertext-Translation/tree/main/plugin-health) (`plugin-health/typescript` in the Commando Center repository, package name `supertext-plugin-health`) sends the version reports and the API key check result to the Supertext Commando Center and answers its reachability ping (`InstallationReporter`, `reportsEnabled()`, `reporterState()`, `pingResponse()`; see *Commando Center* below). It has no dependencies and doesn't need the SDK: `src/api/reporting.ts` passes in the SDK's `SDK_VERSION` and a key checker built from the SDK's `checkApiKey()` and `apiKeyFingerprint`. Like the SDK it is a devDependency (`"supertext-plugin-health": "file:vendor/supertext-plugin-health"`) bundled into `dist/`; `vendor/supertext-plugin-health/` holds the built JavaScript, type declarations, a lean `package.json`, `COMMIT` and `VERSION`. Never edit it: fix Plugin Health in Commando-Center-Supertext-Translation/plugin-health and copy it again with `scripts/vendor-plugin-health.sh` (builds it, replaces the copy entirely, updates `package-lock.json` when the version changed):
+
+```bash
+scripts/vendor-plugin-health.sh plugin-health-v0.1.0   # a release tag
+scripts/vendor-plugin-health.sh                        # latest main of the Commando Center repository
+PLUGIN_HEALTH_DIR=/path/to/Commando-Center-Supertext-Translation scripts/vendor-plugin-health.sh   # a local clone, as it is
+```
+
+Then run the unit and integration tests and note the update in `CHANGELOG.md`.
 
 ### Language codes
 
@@ -118,12 +132,12 @@ The stand-ins (`test/fakeSupertext.ts`, `test/integration/fake-supertext-server.
 
 ### Commando Center: version reports, key check, ping
 
-Protocol: [Commando-Center-Supertext-Translation](https://github.com/Supertext/Commando-Center-Supertext-Translation) → `docs/DEVELOPER.md` → *Report protocol*; the SDK's `InstallationReporter`, `checkApiKey()` and `pingResponse()` implement it, `src/api/reporting.ts` only supplies what Directus knows:
+Protocol: [Commando-Center-Supertext-Translation](https://github.com/Supertext/Commando-Center-Supertext-Translation) → `docs/DEVELOPER.md` → *Report protocol*; Supertext Plugin Health's `InstallationReporter` and `pingResponse()` implement it, with the SDK's `checkApiKey()` and `apiKeyFingerprint` as the key checker (the SDK client gets `SUPERTEXT_API_URL` and the extension's User-Agent); `src/api/reporting.ts` only supplies what Directus knows:
 
 - **Setting:** `SUPERTEXT_VERSION_REPORTS` (default on; `reportsEnabled()`), read from the raw environment first like the other settings. Off: no reports, ping 404. `SUPERTEXT_REPORT_URL` sends reports elsewhere (tests).
-- **Report fields:** `site_url` = `PUBLIC_URL` (absolute), else the request's protocol and host; plugin `Directus-Supertext-Translation` with the version from `package.json`; system `Directus` with the version of the running `directus` package (`process.argv[1]` → its `package.json`, else resolved from the project); `callback.url` = `<site>/supertext/ping`.
+- **Report fields:** `site_url` = `PUBLIC_URL` (absolute), else the request's protocol and host; plugin `Directus-Supertext-Translation` with the version from `package.json`; system `Directus` with the version of the running `directus` package (`process.argv[1]` → its `package.json`, else resolved from the project); `sdk_version` = the bundled SDK's `SDK_VERSION`; `callback.url` = `<site>/supertext/ping`.
 - **When:** Directus has no settings form for the extension, so there is no `settings_saved`. `onRequest` runs in the background on `/status`, `/info`, `/translate` and after the Flow operation (reports `installed`, `upgraded` or `api_key_check`; checks the key only when its fingerprint changed); `/test` runs `testConnection` and waits for it; a translation with `authentication_failure` runs `authenticationFailed`. Calls are serialized per process. Nothing here ever throws into a request.
-- **State:** one row (`key = 'reporter'`, JSON) in `supertext_state`, created with Knex on first use (`StateStore`).
+- **State:** one row (`key = 'reporter'`, JSON) in `supertext_state`, created with Knex on first use (`StateStore`). Plugin Health's state has the same format the SDK 0.1–0.2 reporter stored, so the switch kept the history (no new `installed` report).
 - **Ping:** `GET /supertext/ping` needs no login; Directus doesn't cache custom endpoints, and the answer says `Cache-Control: no-store`.
 
 ### Endpoint reference

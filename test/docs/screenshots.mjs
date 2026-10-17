@@ -17,6 +17,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 
 async function session(email, password) {
 	const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, locale: 'en-US' });
+	page.setDefaultTimeout(90_000); // slow machines: Directus and the stand-in share the CPU with the browser
 	await page.goto(`${B}/admin/login`);
 	await page.fill('input[type=email]', email);
 	await page.fill('input[type=password]', password);
@@ -78,7 +79,7 @@ await box.locator('.targets').waitFor();
 await shot(box, '01-translate-box.png');
 
 await box.getByRole('button', { name: 'Translate' }).click();
-await box.locator('.result').first().waitFor({ timeout: 60_000 });
+await box.locator('.result').first().waitFor({ timeout: 180_000 });
 await editor.waitForTimeout(500);
 await clip(editor, box, field(editor, 'Translations'), '02-translated-form.png');
 
@@ -157,6 +158,18 @@ await admin.evaluate(() => {
 	for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.textContent.includes('127.0.0.1')) n.textContent = 'https://api.supertext.com/v1/';
 });
 await admin.screenshot({ path: out + '09-supertext-module.png', clip: { x: 0, y: 0, width: 960, height: 760 } });
+
+// The language rows: one combo box per Directus language, the tone where Supertext offers it.
+{
+	const heading = admin.locator('.supertext-module h2').filter({ hasText: 'Languages' });
+	const save = admin.getByRole('button', { name: 'Save languages' });
+	await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+	await admin.waitForTimeout(400);
+	const a = await heading.boundingBox();
+	const b = await save.boundingBox();
+	const table = await admin.locator('table.languages').boundingBox();
+	await admin.screenshot({ path: out + '10-supertext-languages.png', clip: { x: table.x - 16, y: Math.max(0, a.y - 16), width: table.width + 32, height: b.y + b.height - a.y + 32 } });
+}
 
 await browser.close();
 console.log(`Saved screenshots to ${out}`);

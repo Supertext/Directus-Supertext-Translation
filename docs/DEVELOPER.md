@@ -7,17 +7,18 @@ A Directus 12 *bundle* extension (`package.json → directus:extension`):
 ```
 src/
   endpoint/index.ts        /supertext/info, /supertext/translate (Express router, user's accountability),
-                           /supertext/status, /supertext/test (administrators), /supertext/ping (public)
+                           /supertext/status, /supertext/languages, /supertext/test (administrators), /supertext/ping (public)
   interface/               "Supertext translation" presentation interface (Vue 3) for the item form
     index.ts               definition + options (translationsField, sourceLanguage, fields)
     interface.vue          languages, replace warning, puts translations into the form (setFieldValue)
   module/                  "Supertext" page for administrators (route /admin/supertext): version, configuration,
-                           languages with Supertext code and tone, Test connection
+                           language mapping (a v-select per Directus language, tone where offered), Test connection
   operation/               Flow operation "Supertext: translate" (id supertext-translate-flow)
     app.ts                 options UI
     api.ts                 handler: items from options or trigger; translates and saves
   api/
     config.ts              SUPERTEXT_* environment variables (raw process.env first: Directus splits values at commas)
+    settings.ts            language mapping saved on the Supertext page (supertext_state, key `languages`); env wins per language
     translator.ts          relation discovery, permission check, document per item, one request per language, save
     version.ts             extension version, read at runtime from package.json
     reporting.ts           Commando Center: version reports, API key check, ping (Plugin Health's InstallationReporter),
@@ -122,11 +123,13 @@ Then run the unit and integration tests and note the update in `CHANGELOG.md`.
 
 Supertext accepts exactly the codes its `GET features` lists (the SDK's `Languages`, from the live API): bare sources (`en`, `de`); targets in one exact form each, regional for German, English, French, Italian and Portuguese (`de-CH`, `en-US`, `pt-BR`), with a script for Chinese and Serbian (`zh-Hans`, `sr-Latn`), bare for the others (`es`, `nl`, `sl`). Anything else is HTTP 404 `INVALID_LANGUAGE_PAIR`; formal/informal for a target without it (`en-US`, `rm`, …) is HTTP 400 `FEATURE_ERROR` (`unsupported_feature`). No pair within one language.
 
-`src/shared/languages.ts` turns Directus language codes into Supertext codes with the SDK's `Languages`, **without guessing**:
+`src/shared/languages.ts` turns Directus language codes into Supertext codes with the SDK's `Languages` (SDK 0.4.0), **with defaults only where they are obvious**:
 
-- `targetCode(code, languageMap)`: the `SUPERTEXT_LANGUAGE_MAP` entry wins (sent as it is); else a Directus code that equals a Supertext code apart from case and `_`/`-` (`de-CH`, `fr_ch` → `fr-CH`, `es`); else `SupertextError('unsupported_language')`, which the translator reports for that language (`supertext.unsupported_language` with `{language}`) without calling Supertext. There are no default regions: `de` must be mapped (to `de-DE`, `de-CH` or `de-AT`).
+- **The mapping** is `config.languageMap`: the codes chosen on the Supertext page (`src/api/settings.ts`, JSON `{ codes, politeness }` in `supertext_state` under `key = 'languages'`), merged by `withLanguageSettings()` with `SUPERTEXT_LANGUAGE_MAP` / `SUPERTEXT_POLITENESS` on top (an environment entry wins for its language). The endpoint (`/info`, `/translate`) and the Flow operation load it on every call (`loadLanguageSettings()`; an unreadable table means environment and defaults only), so a saved change applies without a restart.
+- `targetCode(code, languageMap)` = SDK `Languages.target()`: the mapping wins (sent as it is); else a Directus code that equals a Supertext code apart from case and `_`/`-` (`de-CH`, `fr_ch` → `fr-CH`, `es`); else the SDK default (`DEFAULT_TARGETS` and rules: `de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, `it` → `it-IT`, `pt` → `pt-PT`, `zh`/`zh-CN`/`zh-SG` → `zh-Hans`, `zh-TW`/`zh-HK`/`zh-MO` → `zh-Hant`, `sr` → `sr-Latn`, `sr-Latn-RS` → `sr-Latn`, `es-ES` → `es`); else `SupertextError('unsupported_language')`, which the translator reports for that language (`supertext.unsupported_language` with `{language}`, pointing to the Supertext page) without calling Supertext. No region is guessed: `en-IE`, `de-LI`, `fr-BE`, `gsw`, `sr-RS`, `no` need a mapping.
 - `sourceCode(code, languageMap)`: the mapping's value in its source form (`{"de":"de-CH"}` → `de`, so one mapping serves both directions), else the Supertext source for the code (`en-US` → `en`), else `unsupported_language`.
-- The Supertext page shows the code per language, *Not mapped* for the others, and warns when a tone is set for a target that has none.
+- **The combo boxes** (`src/module/module.vue`): one row per language code of every languages collection used by a translations field (deduplicated by code), with Directus's `v-select` listing `targets` (the SDK's `targetOptions()`, shown as *Name (code)*, the name from `Intl.DisplayNames` in the user's language, else the SDK's English name; the two Swiss German dialects always use the SDK name). Preselected: the saved code, else `suggested` (`Languages.suggestTarget()`: exact match, else default), else none (*— choose —*, flagged *No default*). A row set by `SUPERTEXT_LANGUAGE_MAP` is disabled and says so. The tone box appears only where the selected target `politeness` is true. **Save languages** posts all rows; `applyLanguageChanges()` accepts only codes from `Languages.TARGETS` (else 400 `invalid_language_setting`) and keeps a tone only where the target offers it.
+- Nothing to migrate: before the page existed, the mapping lived only in the environment, which keeps working as the override.
 
 The stand-ins (`test/fakeSupertext.ts`, `test/integration/fake-supertext-server.ts`, `test/docs/stand-in.mjs`) reject bare targets and regional sources like the real API.
 
@@ -136,8 +139,8 @@ Protocol: [Commando-Center-Supertext-Translation](https://github.com/Supertext/C
 
 - **Setting:** `SUPERTEXT_VERSION_REPORTS` (default on; `reportsEnabled()`), read from the raw environment first like the other settings. Off: no reports, ping 404. `SUPERTEXT_REPORT_URL` sends reports elsewhere (tests).
 - **Report fields:** `site_url` = `PUBLIC_URL` (absolute), else the request's protocol and host; plugin `Directus-Supertext-Translation` with the version from `package.json`; system `Directus` with the version of the running `directus` package (`process.argv[1]` → its `package.json`, else resolved from the project); `sdk_version` = the bundled SDK's `SDK_VERSION`; `callback.url` = `<site>/supertext/ping`.
-- **When:** Directus has no settings form for the extension, so there is no `settings_saved`. `onRequest` runs in the background on `/status`, `/info`, `/translate` and after the Flow operation (reports `installed`, `upgraded` or `api_key_check`; checks the key only when its fingerprint changed); `/test` runs `testConnection` and waits for it; a translation with `authentication_failure` runs `authenticationFailed`. Calls are serialized per process. Nothing here ever throws into a request.
-- **State:** one row (`key = 'reporter'`, JSON) in `supertext_state`, created with Knex on first use (`StateStore`). Plugin Health's state has the same format the SDK 0.1–0.2 reporter stored, so the switch kept the history (no new `installed` report).
+- **When:** the only settings form is the language mapping: **Save languages** (`POST /supertext/languages`) runs `afterSettingsSaved` in the background (`settings_saved`, with a key check). `onRequest` runs in the background on `/status`, `/info`, `/translate` and after the Flow operation (reports `installed`, `upgraded` or `api_key_check`; checks the key only when its fingerprint changed); `/test` runs `testConnection` and waits for it; a translation with `authentication_failure` runs `authenticationFailed`. Calls are serialized per process. Nothing here ever throws into a request.
+- **State:** one row (`key = 'reporter'`, JSON) in `supertext_state` (next to `key = 'languages'`, the saved mapping), created with Knex on first use (`StateStore`). Plugin Health's state has the same format the SDK 0.1–0.2 reporter stored, so the switch kept the history (no new `installed` report).
 - **Ping:** `GET /supertext/ping` needs no login; Directus doesn't cache custom endpoints, and the answer says `Cache-Control: no-store`.
 
 ### Endpoint reference
@@ -147,13 +150,15 @@ Protocol: [Commando-Center-Supertext-Translation](https://github.com/Supertext/C
 
 `POST /supertext/translate` → `{ collection, item, field, source, fields, results: [{ language, ok, values, id, created, missing, saved } | { language, ok: false, error, code, key, values }] }`
 
-`GET /supertext/status` (administrators) → `{ version, reports: { enabled, check }, configured, baseUrl, concurrency, timeoutSeconds, languages: [{ collection, code, name, target, politeness }] }`: `version` is read at runtime from the extension's `package.json` (`src/api/version.ts`, looking upwards from `dist/api.js`; `null` if not found; the page links an `X.Y.Z` version to its GitHub release). `languages` covers every languages collection used by a translations field.
+`GET /supertext/status` (administrators) → `{ version, reports: { enabled, check }, configured, baseUrl, concurrency, timeoutSeconds, languages: [{ collection, code, name, target, saved, override, suggested, politeness, savedPoliteness, politenessOverride, politenessSupported }], targets: [{ code, name, politeness }] }`: `version` is read at runtime from the extension's `package.json` (`src/api/version.ts`, looking upwards from `dist/api.js`; `null` if not found; the page links an `X.Y.Z` version to its GitHub release). `languages` covers every languages collection used by a translations field, one row per code: `target` is what is sent (mapping, exact match or default; `null`: `unsupported_language`), `saved` the page's choice, `override` the `SUPERTEXT_LANGUAGE_MAP` entry, `suggested` the SDK's `suggestTarget()`. `targets` are the combo box's choices.
+
+`POST /supertext/languages { languages: [{ language, target, politeness }] }` (administrators) → `{ codes, politeness }` (the saved mapping): `target` null or `''` removes the language's choice; codes outside Supertext's list are refused with 400 `invalid_language_setting` (`values: { language, code }`).
 
 `POST /supertext/test` (administrators) → `{ ok, check: { status, checkedAt, httpStatus, errorCode, fingerprint } }`: the SDK's key check (`GET features`, cost-free), `status` one of `ok`, `invalid`, `missing`, `unreachable`, `error`. Always HTTP 200 for administrators (a 401 would sign the admin out of the app); the page shows `keycheck.<status>`.
 
 `GET /supertext/ping?challenge=<16–64 of A-Z a-z 0-9 _ ->` (public) → 200 `{ ok: true, plugin: "Directus-Supertext-Translation", challenge }`, 400 `{ ok: false }` for any other challenge, 404 with reports off.
 
-Errors: `{ errors: [{ message, extensions: { code, key, values } }] }` (`key`/`values`: the message for the app, see *Interface strings*) with `unauthenticated` (401), `forbidden` (403; also non-admins on `/status` and `/test`), `not_configured` (400, `/test` without a key), `missing_api_key` (503), `no_source`, `unknown_language`, `no_targets`, `no_fields`, `no_translations_field` (400).
+Errors: `{ errors: [{ message, extensions: { code, key, values } }] }` (`key`/`values`: the message for the app, see *Interface strings*) with `unauthenticated` (401), `forbidden` (403; also non-admins on `/status`, `/languages` and `/test`), `not_configured` (400, `/test` without a key), `missing_api_key` (503), `no_source`, `unknown_language`, `no_targets`, `no_fields`, `no_translations_field`, `invalid_language_setting` (400).
 
 ## Local setup
 
@@ -180,6 +185,7 @@ npm run test:integration # builds, then starts a real Directus 12 (SQLite) — i
 - `test/config.test.ts`: settings, including JSON values Directus has split at commas.
 - `test/i18n.test.ts`: all four languages have the English keys, placeholders and URLs; every key the app uses, every API error and every Supertext error code has a message; language lookup and error texts.
 - `test/endpoint.test.ts`: `/status` returns the version from `package.json` and refuses non-admins.
+- `test/language-settings.test.ts`: the saved mapping (lenient parsing, validation, tone only where offered, environment wins, stored in `supertext_state`), `/status` with suggestions, saved codes and overrides, `/languages` (admins only, 400 for unknown codes).
 - `test/reporting.test.ts`: the setting, site URL, state kept in the table, one `installed` report, a 401 reported once as `api_key_check`, nothing sent with reports off, ping answers, no exception when the database fails.
 - `test/demo-check.sh` (CI, needs Docker, PostgreSQL and the stand-in): starts the demo image twice, checks that the demo accounts exist exactly once and no password is logged, `/status` and `/test` as admin (403 for the editor), and translates and saves the first sample article as the editor.
 - `test/integration/directus.test.ts`: Directus 12.5 in a temp folder with the built bundle and the demo setup hook, Supertext replaced by `fake-supertext-server.ts` (prefixes `[<lang>] `). Demo setup (languages, articles, accounts, no passwords in the log), `/info`, translating without saving, structure of rich text, failed languages, unknown languages/missing source, read-only users get 403 and send nothing, saving through the parent and updating the same row, the Flow operation with a manual trigger, translate-on-create without a loop, and the Commando Center (public ping, key check, the `installed` report with Directus 12.5.0 and the callback URL, sent to the fake's `POST /report`, never containing the key).
@@ -227,7 +233,7 @@ DIRECTUS_URL=http://127.0.0.1:8055 EDITOR_EMAIL=… EDITOR_PASSWORD=… ADMIN_EM
   npm run docs:screenshots
 ```
 
-The script uses the editor for the translate screens and the admin for languages, interface options, the Flow operation and the Supertext page (where it shows the live API address instead of the stand-in's) (it closes the admin's license prompts with *Skip* / *Remind Later*, and creates a flow). 1280×900 at 1×, cropped.
+The script uses the editor for the translate screens and the admin for languages, interface options, the Flow operation and the Supertext page with its language combo boxes (where it shows the live API address instead of the stand-in's) (it closes the admin's license prompts with *Skip* / *Remind Later*, and creates a flow). 1280×900 at 1×, cropped.
 
 ## Dependency updates
 

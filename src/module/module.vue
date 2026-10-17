@@ -49,19 +49,41 @@
 				<h2 class="type-title">{{ t('module.languages') }}</h2>
 				<p class="hint">{{ t('module.languagesHint') }}</p>
 				<p v-if="!status.languages.length" class="hint">{{ t('module.noLanguages') }}</p>
-				<table v-else>
-					<thead><tr><th>{{ t('module.language') }}</th><th>{{ t('module.supertext') }}</th><th>{{ t('module.tone') }}</th></tr></thead>
-					<tbody>
-						<tr v-for="l in status.languages" :key="l.collection + l.code">
-							<td>{{ l.name }} <code>{{ l.code }}</code></td>
-							<td><code v-if="l.target">{{ l.target }}</code><span v-else class="fail"><v-icon name="error" small /> {{ t('module.notMapped') }}</span></td>
-							<td>
-								{{ l.politeness === 'more' ? t('module.formal') : l.politeness === 'less' ? t('module.informal') : t('module.default') }}
-								<span v-if="l.politeness !== 'default' && l.politenessSupported === false" class="fail"> · {{ t('module.noPoliteness') }}</span>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+				<template v-else>
+					<table class="languages">
+						<thead><tr><th>{{ t('module.language') }}</th><th>{{ t('module.supertext') }}</th><th>{{ t('module.tone') }}</th></tr></thead>
+						<tbody>
+							<tr v-for="l in status.languages" :key="l.code">
+								<td>{{ l.name }} <code>{{ l.code }}</code></td>
+								<td>
+									<v-select
+										v-model="choices[l.code]"
+										class="target-select"
+										:items="targetItems"
+										:placeholder="t('module.choose')"
+										:disabled="saving || !!l.override"
+										show-deselect
+									/>
+									<div v-if="l.override" class="hint">{{ t('module.overridden', { code: l.override }) }}</div>
+									<div v-else-if="!choices[l.code]" class="fail"><v-icon name="error" small /> {{ t('module.notMapped') }}</div>
+									<div v-else-if="!l.saved && choices[l.code] === l.suggested" class="hint">{{ t('module.suggested') }}</div>
+								</td>
+								<td>
+									<template v-if="toneOffered(l)">
+										<v-select v-model="tones[l.code]" class="tone-select" :items="toneItems" :disabled="saving || !!l.politenessOverride" />
+										<div v-if="l.politenessOverride" class="hint">{{ t('module.toneOverridden') }}</div>
+									</template>
+									<span v-else class="hint">{{ t('module.noPoliteness') }}</span>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					<div class="test">
+						<v-button :loading="saving" @click="saveLanguages">{{ t('module.save') }}</v-button>
+						<span v-if="saved" class="ok"><v-icon name="check" small /> {{ t('module.saved') }}</span>
+						<span v-if="saveError" class="fail"><v-icon name="error" small /> {{ saveError }}</span>
+					</div>
+				</template>
 			</template>
 			<v-progress-circular v-else-if="!error" indeterminate />
 		</div>
@@ -69,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useApi } from '@directus/extensions-sdk';
 import { apiErrorText, currentLanguage, t, type MessageKey } from '../i18n/index.js';
 
@@ -93,14 +115,91 @@ const when = (iso: string) => {
 	return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(currentLanguage());
 };
 
+type Target = { code: string; name: string; politeness: boolean };
+type Language = {
+	code: string;
+	name: string;
+	target: string | null;
+	saved: string | null;
+	override: string | null;
+	suggested: string | null;
+	politeness: 'default' | 'more' | 'less';
+	savedPoliteness: 'default' | 'more' | 'less';
+	politenessOverride: string | null;
+};
+
+/** The chosen Supertext code per Directus language: saved, else the suggestion (exact match or SDK default), else none. */
+const choices = reactive<Record<string, string | null>>({});
+const tones = reactive<Record<string, string>>({});
+const saving = ref(false);
+const saved = ref(false);
+const saveError = ref('');
+
+/** A Supertext code's name in the user's language (Intl), else the SDK's English name. */
+function displayName(target: Target): string {
+	if (target.code.includes('-u-')) return target.name; // Swiss German dialects: Intl only knows "Swiss German"
+	try {
+		const name = new Intl.DisplayNames([currentLanguage()], { type: 'language' }).of(target.code);
+		return name && name !== target.code ? name : target.name;
+	} catch {
+		return target.name;
+	}
+}
+
+const targetItems = computed(() =>
+	((status.value?.targets ?? []) as Target[])
+		.map((target) => ({ text: `${displayName(target)} (${target.code})`, value: target.code }))
+		.sort((a, b) => a.text.localeCompare(b.text, currentLanguage())),
+);
+const toneItems = computed(() => [
+	{ text: t('module.default'), value: 'default' },
+	{ text: t('module.formal'), value: 'more' },
+	{ text: t('module.informal'), value: 'less' },
+]);
+
+/** Formal/informal only where the target that will be sent offers it. */
+function toneOffered(l: Language): boolean {
+	const code = l.override ?? choices[l.code];
+	const target = ((status.value?.targets ?? []) as Target[]).find((x) => x.code === code);
+	return target?.politeness === true;
+}
+
+async function load() {
+	status.value = (await api.get('/supertext/status')).data.data;
+	check.value = status.value?.reports?.check ?? null;
+	for (const l of status.value.languages as Language[]) {
+		choices[l.code] = l.saved ?? l.suggested ?? null;
+		tones[l.code] = l.politeness;
+	}
+}
+
 onMounted(async () => {
 	try {
-		status.value = (await api.get('/supertext/status')).data.data;
-		check.value = status.value?.reports?.check ?? null;
+		await load();
 	} catch (e: any) {
 		error.value = apiErrorText(e);
 	}
 });
+
+async function saveLanguages() {
+	saving.value = true;
+	saved.value = false;
+	saveError.value = '';
+	try {
+		const languages = (status.value.languages as Language[]).map((l) => ({
+			language: l.code,
+			target: l.override ? l.saved : (choices[l.code] ?? null),
+			politeness: l.politenessOverride ? l.savedPoliteness : (tones[l.code] ?? 'default'),
+		}));
+		await api.post('/supertext/languages', { languages });
+		await load();
+		saved.value = true;
+	} catch (e: any) {
+		saveError.value = apiErrorText(e);
+	} finally {
+		saving.value = false;
+	}
+}
 
 async function test() {
 	testing.value = true;
@@ -129,4 +228,12 @@ table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--theme--border-color-subdued); }
 th { color: var(--theme--foreground-subdued); font-weight: 600; }
 h2 { margin-top: 12px; }
+.languages { table-layout: fixed; }
+.languages td { vertical-align: top; overflow-wrap: anywhere; }
+.languages td .hint, .languages td .fail { margin-top: 4px; font-size: 0.9em; }
+.languages td:first-child code { display: block; }
+.languages th:nth-child(1) { width: 27%; }
+.languages th:nth-child(2) { width: 48%; }
+.languages th:nth-child(3) { width: 25%; }
+.languages .target-select, .languages .tone-select { width: 100%; }
 </style>

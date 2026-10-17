@@ -51,8 +51,8 @@ Settings are environment variables of the Directus server (`.env` or container v
 | `SUPERTEXT_API_KEY` | — | Supertext API key. Pasting it with the `Supertext-Auth-Key ` prefix works too. Without a key the translate box says so and the button is disabled. |
 | `SUPERTEXT_ENVIRONMENT` | `live` | `live`, `staging` or `testing` Supertext API. |
 | `SUPERTEXT_API_URL` | — | Explicit API base URL (e.g. a proxy); overrides `SUPERTEXT_ENVIRONMENT`. |
-| `SUPERTEXT_LANGUAGE_MAP` | `{}` | JSON: Directus language code → Supertext code, e.g. `{"de":"de-CH","zh-CN":"zh-Hans"}`. Needed for every Directus code that isn't itself a Supertext code (see [Language setup](#language-setup)); there are no default regions. |
-| `SUPERTEXT_POLITENESS` | `{}` | JSON: language → `more` (formal) or `less` (informal), e.g. `{"de-CH":"more"}`. |
+| `SUPERTEXT_LANGUAGE_MAP` | `{}` | Optional, for automated setups. JSON: Directus language code → Supertext code, e.g. `{"de":"de-CH","zh-CN":"zh-Hans"}`. Normally you choose the codes on the Supertext page instead (see [Language setup](#language-setup)); an entry here wins over that choice for its language, and the page shows it as *Set by SUPERTEXT_LANGUAGE_MAP*. |
+| `SUPERTEXT_POLITENESS` | `{}` | Optional, for automated setups. JSON: language → `more` (formal) or `less` (informal), e.g. `{"de-CH":"more"}`. Wins over the tone chosen on the Supertext page. |
 | `SUPERTEXT_CONCURRENCY` | `3` | Languages translated at the same time. |
 | `SUPERTEXT_POLL_INTERVAL` | `2` | Seconds between status checks while Supertext translates. |
 | `SUPERTEXT_TIMEOUT` | `180` | Maximum seconds to wait for one language. |
@@ -68,15 +68,15 @@ JSON values can be written as they are, commas included (Directus would normally
 
 **The ping endpoint** `GET <PUBLIC_URL>/supertext/ping?challenge=…` is public (no login) and answers only `{"ok":true,"plugin":"Directus-Supertext-Translation","challenge":"…"}`, so Supertext can see that the site is reachable from the internet. It returns nothing else: no versions, no settings, no data.
 
-The extension keeps its state (what was reported last, the latest key check) in a small table `supertext_state` that it creates in the Directus database on first use. Directus lists it as an unmanaged table in the data model; don't add it as a collection.
+The extension keeps its state (what was reported last, the latest key check, the languages chosen on the Supertext page) in a small table `supertext_state` that it creates in the Directus database on first use. Directus lists it as an unmanaged table in the data model; don't add it as a collection.
 
 ### The Supertext page
 
-The bundle adds a **Supertext** page for administrators: the installed plugin version (linked to its release notes on GitHub), whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, the latest API key check and a **Test connection** button (a cost-free call to the Supertext API that checks the key again), whether version information is sent to Supertext, and every language of your translations fields with the Supertext code and tone it is sent with.
+The bundle adds a **Supertext** page for administrators: the installed plugin version (linked to its release notes on GitHub), whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, the latest API key check and a **Test connection** button (a cost-free call to the Supertext API that checks the key again), whether version information is sent to Supertext, and every language of your translations fields with a combo box for its Supertext language and tone (see [Language setup](#language-setup)).
 
 Directus hides new modules until they're switched on: *Settings → Settings → Module Bar*, enable **Supertext**. Only administrators see it.
 
-![The Supertext page: plugin version, API key set, live API address, languages at a time, timeout, the API key check "API key checked: the connection to Supertext works." with its time, Test connection, Send version information to Supertext: On, and the language table with Supertext codes and tone](images/09-supertext-module.png)
+![The Supertext page: plugin version, API key set, live API address, languages at a time, timeout, the API key check "API key checked: the connection to Supertext works." with its time, Test connection, Send version information to Supertext: On, and the start of the Languages section](images/09-supertext-module.png)
 
 ### Interface languages
 
@@ -101,11 +101,23 @@ Each Directus language needs a Supertext language. Supertext accepts exactly the
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
 | All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
 
-- A Directus code that **is** one of these codes (apart from upper/lower case and `_`/`-`) is used as it is: `de-CH`, `fr_ch`, `es`. The source language is always sent without region (`en-US` → `en`), mapped or not.
-- **Every other code needs an entry in `SUPERTEXT_LANGUAGE_MAP`**, e.g. `{"de":"de-CH","en":"en-US","zh-CN":"zh-Hans"}`. The plugin never guesses a region: an unmapped language is reported as *has no Supertext language yet* and nothing is sent for it. One mapping serves both directions: with `{"de":"de-CH"}`, German is translated into `de-CH` and from `de`.
-- Formal/informal (`SUPERTEXT_POLITENESS`) isn't offered for English, Swiss German, Romansh, Albanian and Serbian; leave those on the default tone.
+**Choose the Supertext language on the Supertext page** (module bar → **Supertext** → *Languages*, administrators only): one row per Directus language, source language included, with a combo box listing Supertext's codes as *Name (code)* (names in your interface language) and, where Supertext offers it, a *Tone* box (*Default*, *Formal*, *Informal*). Click **Save languages**; the choices are stored in the Directus database (table `supertext_state`) and apply right away, without a restart. One choice serves both directions: with German → `de-CH`, German is translated into `de-CH` and from `de` (the source language is always sent without region).
 
-The Supertext page shows the code each language is sent as, and *Not mapped* for languages that still need an entry.
+Each combo box starts with the saved choice, else the suggestion, else *— choose —*:
+
+| Directus code | Suggested (and used until you save another choice) |
+| --- | --- |
+| A Supertext code, apart from upper/lower case and `_`/`-` | That code: `de-CH`, `fr_ch` → `fr-CH`, `es`, `zh-hant` → `zh-Hant` |
+| `de`, `en`, `fr`, `it`, `pt` | `de-DE`, `en-US`, `fr-FR`, `it-IT`, `pt-PT` |
+| `zh`, `zh-CN`, `zh-SG` / `zh-TW`, `zh-HK`, `zh-MO` | `zh-Hans` / `zh-Hant` |
+| `sr`, `sr-Latn-RS` / `sr-Cyrl-RS` | `sr-Latn` / `sr-Cyrl` |
+| A region of a language Supertext offers without region | The bare code: `es-ES`, `es-419` → `es`, `nl-NL` → `nl`, `nb-NO` → `nb` |
+| Anything else, e.g. `en-IE`, `de-LI`, `fr-BE`, `gsw`, `sr-RS`, `no` | None: the combo box shows *— choose —* and the row says *No default*. Until you choose one, the language is reported as *has no Supertext language yet* and nothing is sent for it. |
+
+- Formal/informal is only offered where Supertext has it; English, Swiss German, Romansh, Albanian and Serbian have no *Tone* box.
+- **Override for automated setups:** an entry in `SUPERTEXT_LANGUAGE_MAP` (or `SUPERTEXT_POLITENESS`) wins over the choice on the page for that language. The page then shows the combo box disabled with *Set by SUPERTEXT_LANGUAGE_MAP: …*. Remove the entry and restart Directus to choose on the page again. Mappings already set in these variables keep working unchanged after an update; nothing needs to be moved.
+
+![The language rows on the Supertext page: a combo box with the Supertext language per Directus language and a tone box where Supertext offers formal/informal](images/10-supertext-languages.png)
 
 ## Add the translate box to a collection
 
@@ -168,7 +180,7 @@ npm: `npm update directus-extension-supertext-translation`; from the repository:
 
 ## Uninstall
 
-Delete the *Supertext translation* fields from your collections and any flows using the operation, remove *Supertext* from the module bar, then remove the extension folder (or `npm uninstall`) and restart. Translations stay as they are; the plugin keeps no data of its own.
+Delete the *Supertext translation* fields from your collections and any flows using the operation, remove *Supertext* from the module bar, then remove the extension folder (or `npm uninstall`) and restart. Translations stay as they are. The plugin's own data (the languages chosen on the Supertext page and the version report state) is the table `supertext_state`; drop it if you don't reinstall.
 
 ## Troubleshooting
 
@@ -177,7 +189,8 @@ Delete the *Supertext translation* fields from your collections and any flows us
 | No *Supertext translation* interface when creating a field | The extension isn't loaded: check the Directus log for `Loaded extensions` / `Couldn't register bundle`, and that `dist/` was copied. |
 | "No Supertext API key is configured" | Set `SUPERTEXT_API_KEY` and restart Directus. No key yet: see [Supertext account and API key](#supertext-account-and-api-key). *Test connection* on the Supertext page checks it. |
 | No *Supertext* page in the module bar | Enable it under *Settings → Settings → Module Bar* (administrators only). |
-| A JSON setting has no effect | Check it on the Supertext page (language table). The value must be a JSON object, e.g. `{"de-CH":"more","fr-CH":"more"}`. |
+| A JSON setting has no effect | Check it on the Supertext page (language table: *Set by SUPERTEXT_LANGUAGE_MAP*). The value must be a JSON object, e.g. `{"de-CH":"more","fr-CH":"more"}`. |
+| A language's combo box is disabled | `SUPERTEXT_LANGUAGE_MAP` (or `SUPERTEXT_POLITENESS` for the tone) sets it; remove the entry and restart Directus to choose on the page. |
 | "Save the item first, then translate it" | New items need to be saved once. |
 | "There is no en-US text to translate" | The source language has no saved text; fill in and save it, or pick another source. |
 | "You are not allowed to edit this item." | The user lacks update permission on the item (see [Permissions](#permissions)). |
@@ -186,8 +199,8 @@ Delete the *Supertext translation* fields from your collections and any flows us
 | "Authentication failure" | Wrong key, or a key for another environment (`live` vs `staging`). Generate a new one at <https://www.supertext.com/en/integrations/api> (Admin role required). |
 | "Too many requests to Supertext" | Rate limit; requests are retried automatically. Lower `SUPERTEXT_CONCURRENCY` if it persists. |
 | "Your Supertext translation limit is exceeded" | The Supertext subscription quota is used up. |
-| "The language … has no Supertext language yet" / *Not mapped* on the Supertext page | The Directus code isn't a Supertext code: add it to `SUPERTEXT_LANGUAGE_MAP` (see [Language setup](#language-setup)) and restart Directus. |
-| "Supertext does not support this language pair" | A mapped code Supertext doesn't offer (e.g. `es-ES` instead of `es`, or the same language as the source); fix the `SUPERTEXT_LANGUAGE_MAP` entry. The details show the codes that were sent. |
+| "The language … has no Supertext language yet" / *No default* on the Supertext page | The Directus code has no obvious Supertext code (e.g. `en-IE`, `gsw`): choose one in its combo box on the Supertext page and click *Save languages* (see [Language setup](#language-setup)). |
+| "Supertext does not support this language pair" | A code in `SUPERTEXT_LANGUAGE_MAP` that Supertext doesn't offer (e.g. `es-ES` instead of `es`), or the same language as the source; fix the entry, or remove it and choose on the Supertext page. The details show the codes that were sent. |
 | "Supertext offers no formal or informal tone for this language" | `SUPERTEXT_POLITENESS` sets `more`/`less` for a target without it (English, Swiss German, Romansh, Albanian, Serbian); remove that entry. |
 | "Timed out waiting…" | Very long content or slow service: raise `SUPERTEXT_TIMEOUT`. |
 | Rich text opens read-only after saving ("formatting the new editor doesn't support") | The **source** HTML already wasn't in the editor's form (e.g. imported content). Open the source field once, let Directus convert it, save, and translate again. |

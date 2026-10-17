@@ -2,14 +2,16 @@ import { defineEndpoint } from '@directus/extensions-sdk';
 import { readConfig } from '../api/config.js';
 import { findTranslationsRelation, loadItem, translateItem, TranslateError } from '../api/translator.js';
 import { SupertextClient } from '../shared/supertext-client.js';
-import { politenessFor, supportsPoliteness, targetCodeOrNull } from '../shared/languages.js';
+import { politenessFor, suggestTarget, supportsPoliteness, targetCodeOrNull, targetOptions } from '../shared/languages.js';
 import { extensionVersion } from '../api/version.js';
 import { Reporting, siteUrl } from '../api/reporting.js';
+import { applyLanguageChanges, LanguageSettingsError, loadLanguageSettings, saveLanguageSettings, withLanguageSettings } from '../api/settings.js';
 
 /**
  * /supertext/info       GET  ?collection=&item=&field=   languages, fields, whether a key is set
  * /supertext/translate  POST { collection, item, field?, source?, targets?, fields?, save? }
  * /supertext/status     GET  version, configuration and languages (admins; the Supertext module)
+ * /supertext/languages  POST { languages: [{ language, target, politeness }] } saves the language mapping (admins)
  * /supertext/test       POST cost-free check of the API key (admins)
  * /supertext/ping       GET  ?challenge=   public: the Commando Center's reachability check
  *
@@ -20,6 +22,12 @@ export default defineEndpoint({
 	id: 'supertext',
 	handler: (router, { services, getSchema, env, logger, database }) => {
 		const reporting = new Reporting({ env, database, logger });
+		/** The environment's settings with the language mapping saved on the Supertext page (the environment wins per language). */
+		const settings = async () => {
+			const fromEnv = readConfig(env);
+			const saved = await loadLanguageSettings(reporting.store, logger);
+			return { env: fromEnv, saved, config: withLanguageSettings(fromEnv, saved) };
+		};
 		/** Version report and key check on back-end requests (in the background, see api/reporting.ts). */
 		const report = (req: any, config: ReturnType<typeof readConfig>) => reporting.inBackground('onRequest', config, siteUrl(env, req));
 
@@ -52,7 +60,7 @@ export default defineEndpoint({
 			try {
 				requireAdmin(req);
 				const schema = req.schema ?? (await getSchema());
-				const config = readConfig(env);
+				const { env: fromEnv, saved, config } = await settings();
 				// Every languages collection used by a translations field, with its rows.
 				const languageCollections = new Map<string, string>();
 				for (const collection of Object.keys(schema.collections)) {
@@ -63,13 +71,30 @@ export default defineEndpoint({
 						// not a collection with translations
 					}
 				}
-				const languages: { collection: string; code: string; name: string; target: string | null; politeness: string; politenessSupported: boolean | null }[] = [];
+				// One row per language code (the mapping is per code, also when two collections list it).
+				const languages: Record<string, unknown>[] = [];
+				const seen = new Set<string>();
 				for (const [collection, pk] of languageCollections) {
 					const rows: any[] = await new services.ItemsService(collection, { schema, accountability: req.accountability }).readByQuery({ limit: -1, sort: [pk] });
 					for (const row of rows) {
 						const code = String(row[pk]);
+						if (seen.has(code)) continue;
+						seen.add(code);
 						const target = targetCodeOrNull(code, config.languageMap);
-						languages.push({ collection, code, name: String(row.name ?? code), target, politeness: politenessFor(code, config.politeness), politenessSupported: target ? supportsPoliteness(target) : null });
+						languages.push({
+							collection,
+							code,
+							name: String(row.name ?? code),
+							/** Sent to Supertext: the mapping, else exact match, else the SDK default; null: unsupported_language. */
+							target,
+							saved: saved.codes[code] ?? null,
+							override: fromEnv.languageMap[code] ?? null,
+							suggested: suggestTarget(code),
+							politeness: politenessFor(code, config.politeness),
+							savedPoliteness: saved.politeness[code] ?? 'default',
+							politenessOverride: fromEnv.politeness[code] ?? null,
+							politenessSupported: target ? supportsPoliteness(target) : null,
+						});
 					}
 				}
 				report(req, config);
@@ -82,8 +107,30 @@ export default defineEndpoint({
 						concurrency: config.concurrency,
 						timeoutSeconds: config.timeoutMs / 1000,
 						languages,
+						/** The combo box's choices: Supertext's target codes (SDK), sorted by English name. */
+						targets: targetOptions().map(({ code, name, politeness }) => ({ code, name, politeness })),
 					},
 				});
+			} catch (error) {
+				fail(res, error);
+			}
+		});
+
+		router.post('/languages', async (req: any, res: any) => {
+			try {
+				requireAdmin(req);
+				const { env: fromEnv, saved } = await settings();
+				let next;
+				try {
+					next = applyLanguageChanges(saved, req.body?.languages);
+				} catch (error) {
+					if (error instanceof LanguageSettingsError) throw new TranslateError(error.message, 400, 'invalid_language_setting', error.values);
+					throw error;
+				}
+				await saveLanguageSettings(reporting.store, next);
+				// Version report `settings_saved` with the key check (background).
+				reporting.inBackground('settingsSaved', fromEnv, siteUrl(env, req));
+				res.json({ data: next });
 			} catch (error) {
 				fail(res, error);
 			}
@@ -108,7 +155,7 @@ export default defineEndpoint({
 				const { collection, item, field } = req.query as Record<string, string>;
 				if (!collection) throw new TranslateError('"collection" is required.');
 				const schema = req.schema ?? (await getSchema());
-				const config = readConfig(env);
+				const { config } = await settings();
 				report(req, config);
 				const data = await loadItem(services, schema, req.accountability, collection, item && item !== '+' ? item : null, field || undefined);
 				res.json({
@@ -133,7 +180,7 @@ export default defineEndpoint({
 					throw new TranslateError('"collection" and "item" are required.');
 				}
 				const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : undefined);
-				const config = readConfig(env);
+				const { config } = await settings();
 				const result = await translateItem({
 					services,
 					schema: req.schema ?? (await getSchema()),

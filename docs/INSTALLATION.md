@@ -150,6 +150,8 @@ The plugin acts with the signed-in user's permissions:
 - Saving the translations (the editor clicks *Save*) needs create/update permission on the translations collection, as for typing them by hand.
 - Administrators can always translate.
 
+*Export for translation* and *Import translation* (in the same box) need the same permission as translating: update the item. They need no API key and nothing to configure. Uploaded files are limited to **10 MB** (checked before reading, independent of `MAX_PAYLOAD_SIZE`), parsed in memory and never stored; imported translations go into the form and are saved by the editor, like translations. A reverse proxy in front of Directus must allow 10 MB request bodies for `POST /supertext/import`.
+
 No extra permission setting is needed. Users who may only read never spend translation credit: the request is refused before anything is sent to Supertext.
 
 ## Flows: automation and bulk translation

@@ -5,6 +5,7 @@ import { SupertextClient } from '../shared/supertext-client.js';
 import { politenessFor, suggestTarget, supportsPoliteness, targetCodeOrNull, targetOptions } from '../shared/languages.js';
 import { extensionVersion } from '../api/version.js';
 import { Reporting, siteUrl } from '../api/reporting.js';
+import { exportItem, importItem, readBody, type Format } from '../api/files.js';
 import { applyLanguageChanges, LanguageSettingsError, loadLanguageSettings, saveLanguageSettings, withLanguageSettings } from '../api/settings.js';
 
 /**
@@ -14,6 +15,8 @@ import { applyLanguageChanges, LanguageSettingsError, loadLanguageSettings, save
  * /supertext/languages  POST { languages: [{ language, target, politeness }] } saves the language mapping (admins)
  * /supertext/test       POST cost-free check of the API key (admins)
  * /supertext/ping       GET  ?challenge=   public: the Commando Center's reachability check
+ * /supertext/export     POST { collection, item, field?, source?, targets, format: 'xliff'|'html', fields? }  the file (download)
+ * /supertext/import     POST ?collection=&item=&field=&includeChanged=1, body: the file (text, ≤ 10 MB)  the jobs for the form
  *
  * Both run with the signed-in user's permissions. `save` defaults to false: the item
  * form puts the translations into the form and the editor saves them.
@@ -167,6 +170,68 @@ export default defineEndpoint({
 						languages: data.languages,
 					},
 				});
+			} catch (error) {
+				fail(res, error);
+			}
+		});
+
+		// Export for translation: the item's segments as an XLIFF or HTML file (lib: api/files.ts).
+		router.post('/export', async (req: any, res: any) => {
+			try {
+				requireUser(req);
+				const body = req.body ?? {};
+				if (typeof body.collection !== 'string' || body.item === undefined || body.item === null || body.item === '') {
+					throw new TranslateError('"collection" and "item" are required.');
+				}
+				const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : typeof v === 'string' ? [v] : []);
+				const { config } = await settings();
+				const file = await exportItem(
+					{ services, schema: req.schema ?? (await getSchema()), accountability: req.accountability, config },
+					{
+						collection: body.collection,
+						item: String(body.item),
+						field: typeof body.field === 'string' && body.field ? body.field : undefined,
+						source: typeof body.source === 'string' ? body.source : undefined,
+						targets: list(body.targets),
+						format: (body.format === 'html' ? 'html' : 'xliff') as Format,
+						fields: Array.isArray(body.fields) && body.fields.length ? body.fields.map(String) : undefined,
+					},
+				);
+				report(req, config);
+				res.set({
+					'Content-Type': file.contentType,
+					'Content-Disposition': `attachment; filename="${file.filename}"`,
+					'Cache-Control': 'no-store',
+					'X-Content-Type-Options': 'nosniff',
+				});
+				res.send(file.content);
+			} catch (error) {
+				fail(res, error);
+			}
+		});
+
+		// Import translation: reads the uploaded file in memory and returns, per job, the values
+		// for the item form (written like a translation: into the form, the editor saves).
+		router.post('/import', async (req: any, res: any) => {
+			try {
+				requireUser(req);
+				const q = (req.query ?? {}) as Record<string, string>;
+				if (!q.collection || !q.item) throw new TranslateError('"collection" and "item" are required.');
+				const content = await readBody(req);
+				const { config } = await settings();
+				const jobs = await importItem(
+					{ services, schema: req.schema ?? (await getSchema()), accountability: req.accountability, config },
+					{
+						collection: q.collection,
+						item: q.item,
+						field: q.field || undefined,
+						fields: q.fields ? String(q.fields).split(',').filter(Boolean) : undefined,
+						content,
+						includeChanged: q.includeChanged === '1' || q.includeChanged === 'true',
+					},
+				);
+				report(req, config);
+				res.json({ data: { jobs } });
 			} catch (error) {
 				fail(res, error);
 			}

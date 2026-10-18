@@ -7,10 +7,12 @@ A Directus 12 *bundle* extension (`package.json → directus:extension`):
 ```
 src/
   endpoint/index.ts        /supertext/info, /supertext/translate (Express router, user's accountability),
+                           /supertext/export, /supertext/import (translation files),
                            /supertext/status, /supertext/languages, /supertext/test (administrators), /supertext/ping (public)
   interface/               "Supertext translation" presentation interface (Vue 3) for the item form
     index.ts               definition + options (translationsField, sourceLanguage, fields)
-    interface.vue          languages, replace warning, puts translations into the form (setFieldValue)
+    interface.vue          languages, replace warning, puts translations into the form (setFieldValue);
+                           Export for translation / Import translation dialogs
   module/                  "Supertext" page for administrators (route /admin/supertext): version, configuration,
                            language mapping (a v-select per Directus language, tone where offered), Test connection
   operation/               Flow operation "Supertext: translate" (id supertext-translate-flow)
@@ -20,6 +22,7 @@ src/
     config.ts              SUPERTEXT_* environment variables (raw process.env first: Directus splits values at commas)
     settings.ts            language mapping saved on the Supertext page (supertext_state, key `languages`); env wins per language
     translator.ts          relation discovery, permission check, document per item, one request per language, save
+    files.ts               translation files: XLIFF/HTML export and import on the SDK's TranslationFiles
     version.ts             extension version, read at runtime from package.json
     reporting.ts           Commando Center: version reports, API key check, ping (Plugin Health's InstallationReporter),
                            state in the table supertext_state
@@ -81,6 +84,17 @@ Directus can't load translation strings from extensions (custom strings only com
 The API answers in English (`message`, for logs and API clients) and adds `extensions.key` and `extensions.values` to errors and `key`/`values` to failed languages in `/translate`; the app shows `key` (`error.<code>` or `supertext.<SupertextErrorCode>`) from the dictionary and appends `values.detail`, the Supertext API's own text. `SupertextError.detail` carries that text.
 
 New or changed strings need all four languages in the same commit: formal address (Sie, vous, Lei), Directus's own terms (*Sammlung*/*collection*/*raccolta*, *Element*/*élément*/*elemento*, *Flow*/*flux*/*flusso*), "Supertext", `{placeholders}` and URLs unchanged. `test/i18n.test.ts` checks keys, placeholders and URLs and that every used key and API error has a message.
+
+### Translation files (`src/api/files.ts`)
+
+*Export for translation* / *Import translation* use the SDK's `TranslationFiles` (Supertext SDK 0.5.0, imported from `supertext-sdk`, not `supertext-sdk/v1`: no API call). The file is translated elsewhere and imported again.
+
+- **Segments:** `collectSegments()` runs the same `encode()` per field of the translations collection as a translation (`kindForField`, the interface's `fields` option): keys `<field>.<piece>` (`title.0`, `body.3`); plain-text fields as plain text, HTML and markdown pieces as HTML. `valuesFromTranslations()` rebuilds the field values with each codec's `rebuild` (leaf blocks of the source, like a translation; untranslated pieces keep the source; fields without any translated piece are left out).
+- **Reference:** `item:<collection>:<primary key>:<translations field>:<source>:<target>`, each part URI-encoded (e.g. `item:articles:12:translations:en-US:de-DE`). `plugin` = `Directus-Supertext-Translation`; `sourceLanguage`/`targetLanguage` = `Languages.source`/`Languages.target` with the mapping in effect (Supertext page + `SUPERTEXT_LANGUAGE_MAP`), else the Directus code with `_` → `-`.
+- **Export:** `POST /supertext/export { collection, item, field?, source?, targets, format, fields? }` (update permission on the item, like `/translate`) → the file with `Content-Type` `application/x-xliff+xml` / `text/html; charset=utf-8` and `Content-Disposition: attachment; filename="directus-<item>-<target>.xlf"` (`directus-<item>.xlf` for several targets). XLIFF: one job per target; HTML: exactly one.
+- **Import:** `POST /supertext/import?collection=&item=&field=&fields=&includeChanged=1`, body: the file as text (`readBody`: refused above 10 MB by `Content-Length` before reading, and while reading; Directus's own body parser only reads JSON, so `MAX_PAYLOAD_SIZE` doesn't apply; kept in memory). `importJobs()`: `TranslationFiles.read`; per job `plugin` must be ours (`other_system`), the reference must parse (`not_found`) and name the item the form shows (`other_item`: the panel imports into its own item only), source and target must be languages of the field (`no_language`); then `importTranslations(file, collectSegments(current saved source row))`. Returns `{ jobs: [{ reference, language, counts, imported, skippedChanged, ok, values, id, created, error? }] }`.
+- **Write-back:** the same as a translation from the box: the panel puts `values` into the form's pending edits of the Translations field (`applyToForm`, with the *Replace existing translations?* dialog when the language has text) and the editor saves. `ok` results are taken, `source_changed` only with *includeChanged*; `untranslated`, `invalid_markup`, `missing` never.
+- **Errors:** `TranslateError` with keys `files.error.<code>` (`nothing_to_translate`, `one_target`, `invalid_format`, `too_large`, the SDK's `invalid_file`, `missing_metadata`) or per job `{ message, code, key: files.error.<code>, values }`.
 
 ## Supertext API protocol
 
@@ -184,11 +198,12 @@ npm run test:integration # builds, then starts a real Directus 12 (SQLite) — i
 - `test/supertext-client.test.ts`: the extension's client on the SDK: protocol, multipart, status/HTTP errors, 429 retries, key prefix, language codes. The SDK's own tests and conformance scenarios run in the SDK repository.
 - `test/config.test.ts`: settings, including JSON values Directus has split at commas.
 - `test/i18n.test.ts`: all four languages have the English keys, placeholders and URLs; every key the app uses, every API error and every Supertext error code has a message; language lookup and error texts.
+- `test/files.test.ts`: translation files: reference round trip, export with the collector's keys and the mapping (unmapped codes with `-`), HTML with one target, nothing to translate; import: `ok` values for the form, `untranslated`/`invalid_markup`/`missing` not, `source_changed` only with the option, HTML unchanged gives the source, other plugin/item, unknown reference, missing language/item, too large uploads.
 - `test/endpoint.test.ts`: `/status` returns the version from `package.json` and refuses non-admins.
 - `test/language-settings.test.ts`: the saved mapping (lenient parsing, validation, tone only where offered, environment wins, stored in `supertext_state`), `/status` with suggestions, saved codes and overrides, `/languages` (admins only, 400 for unknown codes).
 - `test/reporting.test.ts`: the setting, site URL, state kept in the table, one `installed` report, a 401 reported once as `api_key_check`, nothing sent with reports off, ping answers, no exception when the database fails.
 - `test/demo-check.sh` (CI, needs Docker, PostgreSQL and the stand-in): starts the demo image twice, checks that the demo accounts exist exactly once and no password is logged, `/status` and `/test` as admin (403 for the editor), and translates and saves the first sample article as the editor.
-- `test/integration/directus.test.ts`: Directus 12.5 in a temp folder with the built bundle and the demo setup hook, Supertext replaced by `fake-supertext-server.ts` (prefixes `[<lang>] `). Demo setup (languages, articles, accounts, no passwords in the log), `/info`, translating without saving, structure of rich text, failed languages, unknown languages/missing source, read-only users get 403 and send nothing, saving through the parent and updating the same row, the Flow operation with a manual trigger, translate-on-create without a loop, and the Commando Center (public ping, key check, the `installed` report with Directus 12.5.0 and the callback URL, sent to the fake's `POST /report`, never containing the key).
+- `test/integration/directus.test.ts`: Directus 12.5 in a temp folder with the built bundle and the demo setup hook, Supertext replaced by `fake-supertext-server.ts` (prefixes `[<lang>] `). Demo setup (languages, articles, accounts, no passwords in the log), `/info`, translating without saving, structure of rich text, failed languages, unknown languages/missing source, read-only users get 403 and send nothing, saving through the parent and updating the same row, the Flow operation with a manual trigger, translate-on-create without a loop, an export → import round trip (`/supertext/export` as XLIFF, a target added, `/supertext/import` returns the values; another item's file is refused), and the Commando Center (public ping, key check, the `installed` report with Directus 12.5.0 and the callback URL, sent to the fake's `POST /report`, never containing the key).
 
 CI (`.github/workflows/ci.yml`): **test** (typecheck, unit and integration tests on Node 22) and **demo** (builds `demo/Dockerfile`, runs `test/demo-check.sh` against a PostgreSQL service and the stand-in).
 
@@ -233,7 +248,7 @@ DIRECTUS_URL=http://127.0.0.1:8055 EDITOR_EMAIL=… EDITOR_PASSWORD=… ADMIN_EM
   npm run docs:screenshots
 ```
 
-The script uses the editor for the translate screens and the admin for languages, interface options, the Flow operation and the Supertext page with its language combo boxes (where it shows the live API address instead of the stand-in's) (it closes the admin's license prompts with *Skip* / *Remind Later*, and creates a flow). 1280×900 at 1×, cropped.
+The script uses the editor for the translate screens (including the *Export for translation* dialog and an *Import translation* summary with a French XLIFF file filled from `translations.json`) and the admin for languages, interface options, the Flow operation and the Supertext page with its language combo boxes (where it shows the live API address instead of the stand-in's) (it closes the admin's license prompts with *Skip* / *Remind Later*, and creates a flow). 1280×900 at 1×, cropped.
 
 ## Dependency updates
 
@@ -270,6 +285,7 @@ Publishing to npm stays manual: `npm publish` after the release (the `directus-e
 - Block editor (`input-block-editor`), JSON/repeater fields and nested relations (e.g. translations of related items, M2A page builders) are not translated.
 - Markdown paragraphs spanning several lines come back as one line; `*`/`_` style and escapes may change.
 - Slugs are not generated for new languages.
+- Translation files are per item (no bulk export from the item list yet), and the box imports only files of its own item.
 - Re-translating replaces earlier manual edits of the translated fields; no change detection or translation memory.
 - No Directus *AI Translations* integration (Directus 12's own LLM feature); Supertext is a separate button.
 - Human (professional) translation orders, as in the WordPress plugin, are not implemented.

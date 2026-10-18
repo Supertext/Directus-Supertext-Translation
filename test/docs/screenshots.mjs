@@ -8,6 +8,9 @@
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const B = process.env.DIRECTUS_URL ?? 'http://127.0.0.1:8055';
 const out = fileURLToPath(new URL('../../docs/images/', import.meta.url));
@@ -104,6 +107,50 @@ await dialog.waitFor();
 await editor.waitForTimeout(400);
 await shot(dialog, '04-replace-warning.png');
 await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+// Translation files: "Export for translation" and "Import translation" in the same box.
+await box.getByRole('button', { name: 'Export for translation' }).click();
+const exportDialog = editor.locator('#dialog-outlet .v-card').filter({ hasText: 'File format' });
+await exportDialog.waitFor();
+await editor.waitForTimeout(400);
+await shot(exportDialog, '11-export-dialog.png');
+await exportDialog.getByRole('button', { name: 'Cancel' }).click();
+// The file the dialog downloads (fetched the same way) for French, with the stand-in's French
+// for the segments without formatting; the others stay untranslated.
+const xliff = await editor.evaluate(async (base) => {
+	const r = await fetch(`${base}/auth/refresh`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'session' }) });
+	const token = (await r.json()).data?.access_token;
+	const file = await fetch(`${base}/supertext/export`, {
+		method: 'POST',
+		credentials: 'include',
+		headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+		body: JSON.stringify({ collection: 'articles', item: 1, source: 'en-US', targets: ['fr-CH'], format: 'xliff' }),
+	});
+	return file.text();
+}, B);
+const french = JSON.parse(readFileSync(new URL('translations.json', import.meta.url), 'utf8'))['fr-CH'];
+const xmlText = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+const htmlText = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const filled = xliff.replace(/<source>([^<]*)<\/source>/g, (all, text) => {
+	const fr = french[htmlText(xmlText(text))];
+	return fr && !fr.includes('<') ? `${all}<target>${xml(xmlText(fr))}</target>` : all;
+});
+const upload = join(tmpdir(), 'directus-1-fr-CH.xlf');
+writeFileSync(upload, filled);
+await box.getByRole('button', { name: 'Import translation' }).click();
+const importDialog = editor.locator('#dialog-outlet .v-card').filter({ hasText: 'Translated file' });
+await importDialog.waitFor();
+await importDialog.locator('#supertext-file').setInputFiles(upload);
+await importDialog.getByRole('button', { name: 'Import translation' }).click();
+// French exists already: the same confirmation as for Translate.
+const replace = editor.locator('#dialog-outlet .v-card').filter({ hasText: 'Replace existing translations' });
+await replace.waitFor();
+await replace.getByRole('button', { name: 'Replace' }).click();
+await importDialog.locator('.summary').waitFor();
+await editor.waitForTimeout(500);
+await shot(importDialog, '12-import-summary.png');
+await importDialog.getByRole('button', { name: 'Cancel' }).click();
 
 await editor.goto(`${B}/admin/content/articles`);
 await listShot(editor, '05-articles.png');

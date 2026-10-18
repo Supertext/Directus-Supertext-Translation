@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- Export for translation (XLIFF 1.2 or HTML) and import of translated files; Supertext SDK 0.5.0. *Export for translation* and *Import translation* in the *Translate with Supertext* box: download the item's text for one or more languages, have it translated in a translation tool, by a translator or in Supertext's web app, and import the file into the form (summary: imported, skipped because the source changed, untranslated, formatting changed, not in the file), then save.
+
 - **Language mapping on the Supertext page:** one combo box per Directus language (Directus's own select) with Supertext's languages as *Name (code)*, names in the user's interface language, plus a *Tone* box where Supertext offers formal/informal. *Save languages* stores the choices in the Directus database (`supertext_state`), applies them without a restart and checks every code server-side. Each box preselects the saved code, else the suggestion (the same code, else the obvious default), else *— choose —*. `SUPERTEXT_LANGUAGE_MAP` and `SUPERTEXT_POLITENESS` stay as overrides for automated setups: an entry there wins for its language and the page shows it as *Set by SUPERTEXT_LANGUAGE_MAP*. Existing environment mappings keep working unchanged. New strings in English, German, French and Italian.
 
 - Automatic API key check: when the key in `SUPERTEXT_API_KEY` is new or changed, on *Test connection* and when Supertext rejects the key during a translation. The Supertext page shows the latest result with its time (*the connection works*, *rejected*, *no key*, *Supertext can't be reached*, *error*) in English, German, French and Italian.

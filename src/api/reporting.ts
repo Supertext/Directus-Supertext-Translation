@@ -162,7 +162,7 @@ export class Reporting {
 		const { clientOptions: overrideClientOptions, ...overrides } = this.ctx.reporterOverrides ?? {};
 		const clientOptions: SupertextClientOptions = {
 			baseUrl: config.baseUrl,
-			userAgent: 'directus-extension-supertext-translation',
+			userAgent: `${PLUGIN_NAME}/${extensionVersion() ?? '0.0.0'}`,
 			...(overrides.now ? { now: overrides.now } : {}),
 			...overrideClientOptions,
 		};

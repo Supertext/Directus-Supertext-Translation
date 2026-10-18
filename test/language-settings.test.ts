@@ -37,16 +37,20 @@ describe('language settings', () => {
 		expect(parseLanguageSettings('{"codes":{"de":"de-CH","x":"xx-YY"},"politeness":{"de":"more","fr":"loud"}}')).toEqual({
 			codes: { de: 'de-CH' },
 			politeness: { de: 'more' },
+			review: {},
 		});
+		expect(parseLanguageSettings('{"codes":{},"politeness":{},"review":{"de":true,"fr":"yes"}}').review).toEqual({ de: true });
 	});
 
 	it('applies the rows of the Supertext page, validating the codes', () => {
-		const next = applyLanguageChanges({ codes: { fr: 'fr-FR' }, politeness: {} }, [
-			{ language: 'de', target: 'de-CH', politeness: 'more' },
-			{ language: 'fr', target: null },
+		const next = applyLanguageChanges({ codes: { fr: 'fr-FR' }, politeness: {}, review: { fr: true, it: true } }, [
+			{ language: 'de', target: 'de-CH', politeness: 'more', review: true },
+			{ language: 'fr', target: null, review: false },
 			{ language: 'en', target: 'en-US', politeness: 'more' }, // en-US has no formal/informal: dropped
+			{ language: 'it', target: null }, // review omitted: unchanged
 		]);
-		expect(next).toEqual({ codes: { de: 'de-CH', en: 'en-US' }, politeness: { de: 'more' } });
+		expect(next).toEqual({ codes: { de: 'de-CH', en: 'en-US' }, politeness: { de: 'more' }, review: { de: true, it: true } });
+		expect(applyLanguageChanges({ codes: {}, politeness: {}, review: { de: true } }, [{ language: 'de', target: null, review: 'yes' as any }]).review).toEqual({ de: true });
 		expect(() => applyLanguageChanges(emptyLanguageSettings(), [{ language: 'de', target: 'de' }])).toThrow(LanguageSettingsError);
 		expect(() => applyLanguageChanges(emptyLanguageSettings(), [{ language: 'de', target: 'de-CH', politeness: 'loud' }])).toThrow(LanguageSettingsError);
 		expect(() => applyLanguageChanges(emptyLanguageSettings(), 'de=de-CH')).toThrow(LanguageSettingsError);
@@ -54,7 +58,8 @@ describe('language settings', () => {
 
 	it('lets the environment win per language', () => {
 		const config = readConfig({ SUPERTEXT_LANGUAGE_MAP: '{"de":"de-AT"}', SUPERTEXT_POLITENESS: '{"fr":"less"}' }, {});
-		const merged = withLanguageSettings(config, { codes: { de: 'de-CH', it: 'it-CH' }, politeness: { fr: 'more', it: 'more' } });
+		const merged = withLanguageSettings(config, { codes: { de: 'de-CH', it: 'it-CH' }, politeness: { fr: 'more', it: 'more' }, review: { it: true } });
+		expect(merged.review).toEqual({ it: true });
 		expect(merged.languageMap).toEqual({ de: 'de-AT', it: 'it-CH' });
 		expect(merged.politeness).toEqual({ fr: 'less', it: 'more' });
 	});
@@ -62,9 +67,9 @@ describe('language settings', () => {
 	it('is stored in supertext_state next to the reporter state', async () => {
 		const { db, rows } = fakeDatabase();
 		const store = new StateStore(db);
-		await saveLanguageSettings(store, { codes: { de: 'de-CH' }, politeness: {} });
-		expect(JSON.parse(rows.get('languages')!)).toEqual({ codes: { de: 'de-CH' }, politeness: {} });
-		expect(await loadLanguageSettings(store)).toEqual({ codes: { de: 'de-CH' }, politeness: {} });
+		await saveLanguageSettings(store, { codes: { de: 'de-CH' }, politeness: {}, review: { de: true } });
+		expect(JSON.parse(rows.get('languages')!)).toEqual({ codes: { de: 'de-CH' }, politeness: {}, review: { de: true } });
+		expect(await loadLanguageSettings(store)).toEqual({ codes: { de: 'de-CH' }, politeness: {}, review: { de: true } });
 		// Unreadable store: environment and defaults only.
 		expect(await loadLanguageSettings(new StateStore(undefined as any), { warn() {} })).toEqual(emptyLanguageSettings());
 	});
@@ -120,7 +125,7 @@ describe('Supertext page: languages', () => {
 		const { handlers } = routes({ SUPERTEXT_LANGUAGE_MAP: '{"fr-CH":"fr-FR"}' });
 		const { body } = await call(handlers['GET /status'], admin);
 		const byCode = Object.fromEntries(body.data.languages.map((l: any) => [l.code, l]));
-		expect(byCode.de).toMatchObject({ target: 'de-DE', suggested: 'de-DE', saved: null, override: null, politenessSupported: true });
+		expect(byCode.de).toMatchObject({ target: 'de-DE', suggested: 'de-DE', saved: null, override: null, politenessSupported: true, review: false });
 		expect(byCode['en-IE']).toMatchObject({ target: null, suggested: null, saved: null });
 		expect(byCode['fr-CH']).toMatchObject({ target: 'fr-FR', suggested: 'fr-CH', override: 'fr-FR' });
 		expect(body.data.targets.map((t: any) => t.code)).toContain('de-CH');
@@ -134,13 +139,14 @@ describe('Supertext page: languages', () => {
 		expect(bad.status).toBe(400);
 		expect(bad.body.errors[0].extensions).toMatchObject({ code: 'invalid_language_setting', values: { language: 'de', code: 'deutsch' } });
 
-		const ok = await call(save, { ...admin, body: { languages: [{ language: 'de', target: 'de-CH', politeness: 'more' }, { language: 'en-IE', target: 'en-GB' }] } });
+		const ok = await call(save, { ...admin, body: { languages: [{ language: 'de', target: 'de-CH', politeness: 'more', review: true }, { language: 'en-IE', target: 'en-GB', review: false }] } });
 		expect(ok.status).toBe(200);
-		expect(JSON.parse(rows.get('languages')!)).toEqual({ codes: { de: 'de-CH', 'en-IE': 'en-GB' }, politeness: { de: 'more' } });
+		expect(JSON.parse(rows.get('languages')!)).toEqual({ codes: { de: 'de-CH', 'en-IE': 'en-GB' }, politeness: { de: 'more' }, review: { de: true } });
 
 		const { body } = await call(handlers['GET /status'], admin);
 		const byCode = Object.fromEntries(body.data.languages.map((l: any) => [l.code, l]));
-		expect(byCode.de).toMatchObject({ target: 'de-CH', saved: 'de-CH', politeness: 'more', savedPoliteness: 'more' });
-		expect(byCode['en-IE']).toMatchObject({ target: 'en-GB', saved: 'en-GB' });
+		expect(byCode.de).toMatchObject({ target: 'de-CH', saved: 'de-CH', politeness: 'more', savedPoliteness: 'more', review: true });
+		expect(byCode['en-IE']).toMatchObject({ target: 'en-GB', saved: 'en-GB', review: false });
+		expect(body.data.reviewUrl).toBe('https://localizationreview-production.up.railway.app/v1/');
 	});
 });

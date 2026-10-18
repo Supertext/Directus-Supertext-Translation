@@ -32,7 +32,7 @@ src/
   shared/
     codecs.ts              field value ⇄ pieces: text, HTML (block by block), markdown (line/block based)
     document.ts            HTML document with data-st-id elements (the SDK's HtmlDocument)
-    supertext-client.ts    the extension's Supertext client on top of the Supertext SDK
+    supertext-client.ts    the extension's Supertext client on top of the Supertext SDK; forReview() for languages with Translation review
     languages.ts           target/source codes (the SDK's Languages), politeness
 vendor/supertext-sdk/      Supertext SDK (TypeScript, built), bundled into dist/; see *Supertext SDK*
 vendor/supertext-plugin-health/  Supertext Plugin Health (TypeScript, built), bundled into dist/; see *Supertext Plugin Health*
@@ -107,6 +107,8 @@ AI file translation API v1, same as the WordPress plugin and every other Superte
 | Download | `GET translate/ai/file/{id}/translation` | translated HTML |
 | Delete | `DELETE translate/ai/file/{id}` | always attempted, also after errors |
 
+**Translation review** (per Directus language, checkbox on the Supertext page, stored as `review` in the `languages` row of `supertext_state` next to `codes` and `politeness`): `translateItem()` takes `client.forReview(config.review[language])` for each target, a second SDK client with the same key, timeouts, `fetch` and User-Agent whose base URL is `SUPERTEXT_REVIEW_URL` (default `REVIEW_URL` in `src/shared/supertext-client.ts`, the translation proxy of [Supertext Localization Review](https://github.com/Supertext/Localization-Review-Supertext-Translation)), created once per translation. The whole round trip (upload, status, download, delete) runs on that client, so a job is collected where it was submitted. The proxy speaks the same API v1, forwards to the live Supertext API with the plugin's key, stores every segment per key and serves reviewers' corrections on the next upload, so nothing else changes in the extension. An empty `SUPERTEXT_REVIEW_URL` (or the same URL as the API) makes `forReview()` always return the direct client, and the page disables the checkboxes. The key check, version reports and translation-file export/import never use the review service. Tests: `test/review.test.ts`.
+
 HTTP 429 (`RATE_LIMIT_EXCEEDED`) is retried up to 4 times (`Retry-After`, else 1/2/4/8 s with jitter, at most 30 s). Errors are the SDK's `SupertextError` with a stable `code`: `missing_api_key`, `authentication_failure` (401/403), `invalid_language_pair` (400 `INVALID_LANGUAGE_PAIR`), `not_found` (404), `payload_too_large` (413), `too_many_requests` (429), `service_unavailable` (5xx), `unexpected_status`, `transport_error` (network), `no_file_id`, `translation_error` (status `error`), `quota_exceeded` (`limit_exceeded`), `file_deleted`, `timeout`, `incomplete_response`. Each has a `supertext.<code>` message in all four languages (`test/i18n.test.ts` checks every code of the SDK). The API key never appears in messages.
 
 ### Supertext SDK
@@ -119,7 +121,7 @@ scripts/vendor-sdk.sh <commit|branch>  # a tag, branch or commit
 SDK_DIR=/path/to/Supertext-API-SDK-and-Guide scripts/vendor-sdk.sh   # a local clone, as it is
 ```
 
-Then run the unit and integration tests and note the update in `CHANGELOG.md`. Once the SDK is on npm, the devDependency points at the published version instead; it stays bundled. `src/shared/supertext-client.ts` wraps the SDK client (options in milliseconds, a `fetch` for tests, the User-Agent `supertext-sdk-typescript directus-extension-supertext-translation`).
+Then run the unit and integration tests and note the update in `CHANGELOG.md`. Once the SDK is on npm, the devDependency points at the published version instead; it stays bundled. `src/shared/supertext-client.ts` wraps the SDK client (options in milliseconds, a `fetch` for tests, the User-Agent `supertext-sdk-typescript Directus-Supertext-Translation/<version>`, the version from `package.json` as in the reports, `userAgent()` in `src/api/version.ts`).
 
 ### Supertext Plugin Health
 
@@ -200,7 +202,8 @@ npm run test:integration # builds, then starts a real Directus 12 (SQLite) — i
 - `test/i18n.test.ts`: all four languages have the English keys, placeholders and URLs; every key the app uses, every API error and every Supertext error code has a message; language lookup and error texts.
 - `test/files.test.ts`: translation files: reference round trip, export with the collector's keys and the mapping (unmapped codes with `-`), HTML with one target, nothing to translate; import: `ok` values for the form, `untranslated`/`invalid_markup`/`missing` not, `source_changed` only with the option, HTML unchanged gives the source, other plugin/item, unknown reference, missing language/item, too large uploads.
 - `test/endpoint.test.ts`: `/status` returns the version from `package.json` and refuses non-admins.
-- `test/language-settings.test.ts`: the saved mapping (lenient parsing, validation, tone only where offered, environment wins, stored in `supertext_state`), `/status` with suggestions, saved codes and overrides, `/languages` (admins only, 400 for unknown codes).
+- `test/language-settings.test.ts`: the saved mapping (lenient parsing, validation, tone only where offered, *Translation review* on/off/unchanged, environment wins, stored in `supertext_state`), `/status` with suggestions, saved codes, overrides, `review` and `reviewUrl`, `/languages` (admins only, 400 for unknown codes).
+- `test/review.test.ts`: *Translation review*: `SUPERTEXT_REVIEW_URL` defaults to Supertext's review service and is off when empty; a language with review on goes through the review URL (upload, status, download and delete) while the others go directly, all direct with an empty URL; one review client with the same key, never for the key check; the User-Agent with the version.
 - `test/reporting.test.ts`: the setting, site URL, state kept in the table, one `installed` report, a 401 reported once as `api_key_check`, nothing sent with reports off, ping answers, no exception when the database fails.
 - `test/demo-check.sh` (CI, needs Docker, PostgreSQL and the stand-in): starts the demo image twice, checks that the demo accounts exist exactly once and no password is logged, `/status` and `/test` as admin (403 for the editor), and translates and saves the first sample article as the editor.
 - `test/integration/directus.test.ts`: Directus 12.5 in a temp folder with the built bundle and the demo setup hook, Supertext replaced by `fake-supertext-server.ts` (prefixes `[<lang>] `). Demo setup (languages, articles, accounts, no passwords in the log), `/info`, translating without saving, structure of rich text, failed languages, unknown languages/missing source, read-only users get 403 and send nothing, saving through the parent and updating the same row, the Flow operation with a manual trigger, translate-on-create without a loop, an export → import round trip (`/supertext/export` as XLIFF, a target added, `/supertext/import` returns the values; another item's file is refused), and the Commando Center (public ping, key check, the `installed` report with Directus 12.5.0 and the callback URL, sent to the fake's `POST /report`, never containing the key).
@@ -219,7 +222,7 @@ Directus 12.5.0 (`directus/directus` image) with this bundle built in the first 
 
 Directus 12's bootstrap creates no user without `ADMIN_EMAIL`, and a fresh install shows the browser `/setup` screen (first admin, license acceptance). With `DEMO_ADMIN_*` set the demo creates the admin, so `/setup` no longer appears. On first login Directus asks administrators about a license key / Core plan and a project owner (Directus MSCL-1.0-GPL license); that choice is left to the project's owner and not automated.
 
-`demo/docker/start.cjs` replaces the image command: with `DEMO_DATABASE_URL` (a Postgres server URL) it creates the database `DEMO_DATABASE_NAME` (default `directus`) if needed and sets `DB_CLIENT`/`DB_CONNECTION_STRING`, then runs the image's entrypoint (bootstrap, start). Variables: [demo/.env.example](../demo/.env.example).
+`demo/docker/start.cjs` replaces the image command: with `DEMO_DATABASE_URL` (a Postgres server URL) it creates the database `DEMO_DATABASE_NAME` (default `directus`) if needed and sets `DB_CLIENT`/`DB_CONNECTION_STRING`, then runs the image's entrypoint (bootstrap, start). Variables: [demo/.env.example](../demo/.env.example). `SUPERTEXT_REVIEW_URL` is optional (another review service than Supertext's for languages with *Translation review*; empty turns review off).
 
 ```bash
 docker build -f demo/Dockerfile -t directus-supertext-demo .
@@ -286,6 +289,6 @@ Publishing to npm stays manual: `npm publish` after the release (the `directus-e
 - Markdown paragraphs spanning several lines come back as one line; `*`/`_` style and escapes may change.
 - Slugs are not generated for new languages.
 - Translation files are per item (no bulk export from the item list yet), and the box imports only files of its own item.
-- Re-translating replaces earlier manual edits of the translated fields; no change detection or translation memory.
+- Re-translating replaces earlier manual edits of the translated fields; no change detection. A translation memory and reviewers' corrections come from the review service when a language has *Translation review* on; corrections reach Directus only with the next translation (no push).
 - No Directus *AI Translations* integration (Directus 12's own LLM feature); Supertext is a separate button.
 - Human (professional) translation orders, as in the WordPress plugin, are not implemented.

@@ -12,7 +12,7 @@ For administrators who set up a Directus project. Editors: see the [User guide](
 | Multilingual content | Directus's standard setup: a languages collection and a **Translations** field on each collection to translate (see [Language setup](#language-setup)) |
 | Supertext | A Supertext account and an API key with access to AI translation (see [Supertext account and API key](#supertext-account-and-api-key)) |
 
-The Directus server must reach `https://api.supertext.com` over HTTPS.
+The Directus server must reach `https://api.supertext.com` over HTTPS (and, for [Translation review](#translation-review), Supertext's review service).
 
 ## Install
 
@@ -50,7 +50,8 @@ Settings are environment variables of the Directus server (`.env` or container v
 | --- | --- | --- |
 | `SUPERTEXT_API_KEY` | — | Supertext API key. Pasting it with the `Supertext-Auth-Key ` prefix works too. Without a key the translate box says so and the button is disabled. |
 | `SUPERTEXT_ENVIRONMENT` | `live` | `live`, `staging` or `testing` Supertext API. |
-| `SUPERTEXT_API_URL` | — | Explicit API base URL (e.g. a proxy); overrides `SUPERTEXT_ENVIRONMENT`. |
+| `SUPERTEXT_API_URL` | — | Explicit API base URL; overrides `SUPERTEXT_ENVIRONMENT`. For [Translation review](#translation-review) use the checkbox per language on the Supertext page instead. |
+| `SUPERTEXT_REVIEW_URL` | Supertext's review service | Address of the review service for languages with *Translation review* on. Empty (`SUPERTEXT_REVIEW_URL=`) turns review off for every language. Only change it when Supertext gives you another address. |
 | `SUPERTEXT_LANGUAGE_MAP` | `{}` | Optional, for automated setups. JSON: Directus language code → Supertext code, e.g. `{"de":"de-CH","zh-CN":"zh-Hans"}`. Normally you choose the codes on the Supertext page instead (see [Language setup](#language-setup)); an entry here wins over that choice for its language, and the page shows it as *Set by SUPERTEXT_LANGUAGE_MAP*. |
 | `SUPERTEXT_POLITENESS` | `{}` | Optional, for automated setups. JSON: language → `more` (formal) or `less` (informal), e.g. `{"de-CH":"more"}`. Wins over the tone chosen on the Supertext page. |
 | `SUPERTEXT_CONCURRENCY` | `3` | Languages translated at the same time. |
@@ -72,11 +73,11 @@ The extension keeps its state (what was reported last, the latest key check, the
 
 ### The Supertext page
 
-The bundle adds a **Supertext** page for administrators: the installed plugin version (linked to its release notes on GitHub), whether a key is set (with links to create a Supertext account and generate the key), which API is used, how many languages run at a time, the timeout, the latest API key check and a **Test connection** button (a cost-free call to the Supertext API that checks the key again), whether version information is sent to Supertext, and every language of your translations fields with a combo box for its Supertext language and tone (see [Language setup](#language-setup)).
+The bundle adds a **Supertext** page for administrators: the installed plugin version (linked to its release notes on GitHub), whether a key is set (with links to create a Supertext account and generate the key), which API is used, the review service for [Translation review](#translation-review), how many languages run at a time, the timeout, the latest API key check and a **Test connection** button (a cost-free call to the Supertext API that checks the key again), whether version information is sent to Supertext, and every language of your translations fields with a combo box for its Supertext language, its tone and the *Translation review* checkbox (see [Language setup](#language-setup)).
 
 Directus hides new modules until they're switched on: *Settings → Settings → Module Bar*, enable **Supertext**. Only administrators see it.
 
-![The Supertext page: plugin version, API key set, live API address, languages at a time, timeout, the API key check "API key checked: the connection to Supertext works." with its time, Test connection, Send version information to Supertext: On, and the start of the Languages section](images/09-supertext-module.png)
+![The Supertext page: plugin version, API key set, live API address, the review service's address, languages at a time, timeout, the API key check "API key checked: the connection to Supertext works." with its time, Test connection, Send version information to Supertext: On, and the start of the Languages section](images/09-supertext-module.png)
 
 ### Interface languages
 
@@ -101,7 +102,7 @@ Each Directus language needs a Supertext language. Supertext accepts exactly the
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
 | All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
 
-**Choose the Supertext language on the Supertext page** (module bar → **Supertext** → *Languages*, administrators only): one row per Directus language, source language included, with a combo box listing Supertext's codes as *Name (code)* (names in your interface language) and, where Supertext offers it, a *Tone* box (*Default*, *Formal*, *Informal*). Click **Save languages**; the choices are stored in the Directus database (table `supertext_state`) and apply right away, without a restart. One choice serves both directions: with German → `de-CH`, German is translated into `de-CH` and from `de` (the source language is always sent without region).
+**Choose the Supertext language on the Supertext page** (module bar → **Supertext** → *Languages*, administrators only): one row per Directus language, source language included, with a combo box listing Supertext's codes as *Name (code)* (names in your interface language), where Supertext offers it a *Tone* box (*Default*, *Formal*, *Informal*), and a *Translation review* checkbox (off by default, see [Translation review](#translation-review)). Click **Save languages**; the choices are stored in the Directus database (table `supertext_state`) and apply right away, without a restart. One choice serves both directions: with German → `de-CH`, German is translated into `de-CH` and from `de` (the source language is always sent without region).
 
 Each combo box starts with the saved choice, else the suggestion, else *— choose —*:
 
@@ -117,7 +118,21 @@ Each combo box starts with the saved choice, else the suggestion, else *— choo
 - Formal/informal is only offered where Supertext has it; English, Swiss German, Romansh, Albanian and Serbian have no *Tone* box.
 - **Override for automated setups:** an entry in `SUPERTEXT_LANGUAGE_MAP` (or `SUPERTEXT_POLITENESS`) wins over the choice on the page for that language. The page then shows the combo box disabled with *Set by SUPERTEXT_LANGUAGE_MAP: …*. Remove the entry and restart Directus to choose on the page again. Mappings already set in these variables keep working unchanged after an update; nothing needs to be moved.
 
-![The language rows on the Supertext page: a combo box with the Supertext language per Directus language and a tone box where Supertext offers formal/informal](images/10-supertext-languages.png)
+![The language rows on the Supertext page: a combo box with the Supertext language per Directus language, a tone box where Supertext offers formal/informal and the Translation review checkbox, not ticked](images/10-supertext-languages.png)
+
+## Translation review
+
+With **Translation review**, people check the translations on the website itself and correct them there: customers or Supertext linguists open the original and the translated page side by side in Chrome with the *Supertext Localization Review* extension and fix texts in a side panel. Their corrections come back into Directus.
+
+Turn it on per language that is translated **into**: module bar → **Supertext** → *Languages* → tick **Translation review** in the language's row → **Save languages** (administrators only). Untick it to turn it off again; nothing else changes. The choice is stored with the language mapping in `supertext_state`; after an update every language starts with review off.
+
+- Translations into that language then go through Supertext's review service instead of directly to Supertext. It answers exactly like Supertext and passes everything on with your API key, so billing, languages, formal/informal and error messages stay the same. Other languages keep going directly to Supertext. This applies to the *Translate with Supertext* box and the Flow operation alike.
+- The review service keeps every translation of your account. A text it has translated before gets the same translation again (without a new Supertext call), and once a reviewer has corrected it, the corrected text.
+- **Corrections arrive with the next translation:** after a review, translate the items again (*Translate with Supertext*, or the Flow) to bring the corrections into Directus. As always, translating again replaces manual changes in the translated fields.
+- Reviewers get a review link for your site from Supertext; nothing to set up in Directus.
+- The review service works with keys of the **live** Supertext API. With `SUPERTEXT_ENVIRONMENT=staging` or `testing`, leave review off.
+- *Export for translation* and *Import translation* don't use the review service. The API key check (*Test connection*, the automatic check) still goes directly to Supertext.
+- The Supertext page shows the review service's address under *Review service*, or *Off* when `SUPERTEXT_REVIEW_URL` is empty (then the checkboxes are disabled).
 
 ## Add the translate box to a collection
 
@@ -198,6 +213,8 @@ Delete the *Supertext translation* fields from your collections and any flows us
 | "You are not allowed to edit this item." | The user lacks update permission on the item (see [Permissions](#permissions)). |
 | "Supertext rejected the API key" on the Supertext page | The key is wrong or revoked. Check that the whole key was copied into `SUPERTEXT_API_KEY`, or generate a new one at <https://www.supertext.com/en/integrations/api> (Admin role required). No Supertext account yet? Create one at <https://www.supertext.com/person/en/account/signin>. Restart Directus, then *Test connection*. |
 | "The API key couldn't be checked because Supertext can't be reached" | The Directus server can't reach `api.supertext.com` (firewall, proxy, DNS). Translations need the same connection. |
+| "Authentication failure" only for languages with *Translation review* | The review service only works with keys of the live Supertext API: with `SUPERTEXT_ENVIRONMENT=staging`/`testing` (or `SUPERTEXT_API_URL`) leave review off. |
+| Reviewers' corrections don't show up in Directus | They arrive with the next translation: translate the items into that language again. Check that the language's *Translation review* is ticked on the Supertext page. |
 | "Authentication failure" | Wrong key, or a key for another environment (`live` vs `staging`). Generate a new one at <https://www.supertext.com/en/integrations/api> (Admin role required). |
 | "Too many requests to Supertext" | Rate limit; requests are retried automatically. Lower `SUPERTEXT_CONCURRENCY` if it persists. |
 | "Your Supertext translation limit is exceeded" | The Supertext subscription quota is used up. |

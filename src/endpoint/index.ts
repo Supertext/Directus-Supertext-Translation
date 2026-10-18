@@ -3,7 +3,7 @@ import { readConfig } from '../api/config.js';
 import { findTranslationsRelation, loadItem, translateItem, TranslateError } from '../api/translator.js';
 import { SupertextClient } from '../shared/supertext-client.js';
 import { politenessFor, suggestTarget, supportsPoliteness, targetCodeOrNull, targetOptions } from '../shared/languages.js';
-import { extensionVersion } from '../api/version.js';
+import { extensionVersion, userAgent } from '../api/version.js';
 import { Reporting, siteUrl } from '../api/reporting.js';
 import { exportItem, importItem, readBody, type Format } from '../api/files.js';
 import { applyLanguageChanges, LanguageSettingsError, loadLanguageSettings, saveLanguageSettings, withLanguageSettings } from '../api/settings.js';
@@ -12,7 +12,7 @@ import { applyLanguageChanges, LanguageSettingsError, loadLanguageSettings, save
  * /supertext/info       GET  ?collection=&item=&field=   languages, fields, whether a key is set
  * /supertext/translate  POST { collection, item, field?, source?, targets?, fields?, save? }
  * /supertext/status     GET  version, configuration and languages (admins; the Supertext module)
- * /supertext/languages  POST { languages: [{ language, target, politeness }] } saves the language mapping (admins)
+ * /supertext/languages  POST { languages: [{ language, target, politeness, review }] } saves the language mapping (admins)
  * /supertext/test       POST cost-free check of the API key (admins)
  * /supertext/ping       GET  ?challenge=   public: the Commando Center's reachability check
  * /supertext/export     POST { collection, item, field?, source?, targets, format: 'xliff'|'html', fields? }  the file (download)
@@ -97,6 +97,8 @@ export default defineEndpoint({
 							savedPoliteness: saved.politeness[code] ?? 'default',
 							politenessOverride: fromEnv.politeness[code] ?? null,
 							politenessSupported: target ? supportsPoliteness(target) : null,
+							/** *Translation review* on: translations into this language go through the review service. */
+							review: config.review[code] === true,
 						});
 					}
 				}
@@ -107,6 +109,8 @@ export default defineEndpoint({
 						reports: { enabled: reporting.enabled, check: await reporting.lastCheck() },
 						configured: config.apiKey !== '',
 						baseUrl: config.baseUrl,
+						/** '' when review is off for every language (SUPERTEXT_REVIEW_URL empty). */
+						reviewUrl: config.reviewUrl,
 						concurrency: config.concurrency,
 						timeoutSeconds: config.timeoutMs / 1000,
 						languages,
@@ -145,7 +149,7 @@ export default defineEndpoint({
 				const config = readConfig(env);
 				// The automatic key check (SDK): ok, invalid, missing, unreachable or error. Also reports a changed status.
 				const result = await reporting.run('testConnection', config, siteUrl(env, req));
-				const check = result?.check ?? (await new SupertextClient({ apiKey: config.apiKey, baseUrl: config.baseUrl }).checkApiKey());
+				const check = result?.check ?? (await new SupertextClient({ apiKey: config.apiKey, baseUrl: config.baseUrl, userAgent: userAgent() }).checkApiKey());
 				res.json({ data: { ok: check.status === 'ok', check } });
 			} catch (error) {
 				fail(res, error);

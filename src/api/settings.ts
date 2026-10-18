@@ -19,12 +19,14 @@ export type LanguageSettings = {
 	codes: Record<string, string>;
 	/** Directus language code → tone; only `more`/`less` are stored. */
 	politeness: Record<string, Politeness>;
+	/** Directus language code → true where *Translation review* is on (translations into it go through the review service). */
+	review: Record<string, true>;
 };
 
 const POLITENESS: readonly Politeness[] = ['default', 'more', 'less'];
 const TARGET_CODES = new Set(Languages.TARGETS.map((t) => t.code));
 
-export const emptyLanguageSettings = (): LanguageSettings => ({ codes: {}, politeness: {} });
+export const emptyLanguageSettings = (): LanguageSettings => ({ codes: {}, politeness: {}, review: {} });
 
 /** Reads stored JSON leniently: anything that isn't a valid entry is dropped. */
 export function parseLanguageSettings(raw: string | null | undefined): LanguageSettings {
@@ -42,6 +44,9 @@ export function parseLanguageSettings(raw: string | null | undefined): LanguageS
 	for (const [lang, p] of Object.entries(value?.politeness ?? {})) {
 		if (p === 'more' || p === 'less') settings.politeness[lang] = p;
 	}
+	for (const [lang, on] of Object.entries(value?.review ?? {})) {
+		if (on === true) settings.review[lang] = true;
+	}
 	return settings;
 }
 
@@ -56,16 +61,16 @@ export class LanguageSettingsError extends Error {
 	}
 }
 
-export type LanguageChange = { language: string; target: string | null; politeness?: string };
+export type LanguageChange = { language: string; target: string | null; politeness?: string; /** *Translation review*; omitted: unchanged. */ review?: boolean };
 
 /**
  * Applies the rows the Supertext page sends (`target` null or '' clears the language) to the
- * saved settings. Every target must be one of Supertext's codes; a tone is kept only where
+ * saved settings (`review` other than true/false keeps the language's *Translation review*). Every target must be one of Supertext's codes; a tone is kept only where
  * the target offers formal/informal.
  */
 export function applyLanguageChanges(current: LanguageSettings, changes: unknown): LanguageSettings {
 	if (!Array.isArray(changes)) throw new LanguageSettingsError('"languages" must be a list.', { language: '', code: '' });
-	const next: LanguageSettings = { codes: { ...current.codes }, politeness: { ...current.politeness } };
+	const next: LanguageSettings = { codes: { ...current.codes }, politeness: { ...current.politeness }, review: { ...current.review } };
 	for (const change of changes as LanguageChange[]) {
 		const language = typeof change?.language === 'string' ? change.language.trim() : '';
 		if (!language) throw new LanguageSettingsError('Each entry needs a "language".', { language: '', code: '' });
@@ -80,16 +85,19 @@ export function applyLanguageChanges(current: LanguageSettings, changes: unknown
 		const effective = target || Languages.suggestTarget(language);
 		if (politeness !== 'default' && effective && Languages.supportsPoliteness(effective)) next.politeness[language] = politeness;
 		else delete next.politeness[language];
+		if (change.review === true) next.review[language] = true;
+		else if (change.review === false) delete next.review[language];
 	}
 	return next;
 }
 
-/** The configuration with the saved mapping and tones; environment entries win per language. */
+/** The configuration with the saved mapping, tones and *Translation review*; environment entries win per language. */
 export function withLanguageSettings(config: SupertextConfig, saved: LanguageSettings): SupertextConfig {
 	return {
 		...config,
 		languageMap: { ...saved.codes, ...config.languageMap },
 		politeness: { ...saved.politeness, ...config.politeness },
+		review: { ...config.review, ...saved.review },
 	};
 }
 

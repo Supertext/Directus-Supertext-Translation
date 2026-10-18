@@ -17,6 +17,8 @@
 					<dd>{{ status.configured ? t('module.keySet') : t('module.keyMissing') }}</dd>
 					<dt>{{ t('module.api') }}</dt>
 					<dd><code>{{ status.baseUrl }}</code></dd>
+					<dt>{{ t('module.reviewService') }}</dt>
+					<dd><code v-if="status.reviewUrl">{{ status.reviewUrl }}</code><template v-else>{{ t('module.reviewOff') }}</template></dd>
 					<dt>{{ t('module.parallel') }}</dt>
 					<dd>{{ status.concurrency }}</dd>
 					<dt>{{ t('module.timeout') }}</dt>
@@ -51,7 +53,7 @@
 				<p v-if="!status.languages.length" class="hint">{{ t('module.noLanguages') }}</p>
 				<template v-else>
 					<table class="languages">
-						<thead><tr><th>{{ t('module.language') }}</th><th>{{ t('module.supertext') }}</th><th>{{ t('module.tone') }}</th></tr></thead>
+						<thead><tr><th>{{ t('module.language') }}</th><th>{{ t('module.supertext') }}</th><th>{{ t('module.tone') }}</th><th>{{ t('module.review') }}</th></tr></thead>
 						<tbody>
 							<tr v-for="l in status.languages" :key="l.code">
 								<td>{{ l.name }} <code>{{ l.code }}</code></td>
@@ -75,9 +77,13 @@
 									</template>
 									<span v-else class="hint">{{ t('module.noPoliteness') }}</span>
 								</td>
+								<td>
+									<v-checkbox v-model="reviews[l.code]" class="review-checkbox" :label="t('module.reviewOn')" :disabled="saving || !status.reviewUrl" />
+								</td>
 							</tr>
 						</tbody>
 					</table>
+					<p class="hint">{{ t('module.reviewHint') }}</p>
 					<div class="test">
 						<v-button :loading="saving" @click="saveLanguages">{{ t('module.save') }}</v-button>
 						<span v-if="saved" class="ok"><v-icon name="check" small /> {{ t('module.saved') }}</span>
@@ -126,11 +132,14 @@ type Language = {
 	politeness: 'default' | 'more' | 'less';
 	savedPoliteness: 'default' | 'more' | 'less';
 	politenessOverride: string | null;
+	review: boolean;
 };
 
 /** The chosen Supertext code per Directus language: saved, else the suggestion (exact match or SDK default), else none. */
 const choices = reactive<Record<string, string | null>>({});
 const tones = reactive<Record<string, string>>({});
+/** *Translation review* per Directus language (off by default). */
+const reviews = reactive<Record<string, boolean>>({});
 const saving = ref(false);
 const saved = ref(false);
 const saveError = ref('');
@@ -170,6 +179,7 @@ async function load() {
 	for (const l of status.value.languages as Language[]) {
 		choices[l.code] = l.saved ?? l.suggested ?? null;
 		tones[l.code] = l.politeness;
+		reviews[l.code] = l.review === true;
 	}
 }
 
@@ -190,6 +200,7 @@ async function saveLanguages() {
 			language: l.code,
 			target: l.override ? l.saved : (choices[l.code] ?? null),
 			politeness: l.politenessOverride ? l.savedPoliteness : (tones[l.code] ?? 'default'),
+			review: reviews[l.code] === true,
 		}));
 		await api.post('/supertext/languages', { languages });
 		await load();
@@ -215,7 +226,7 @@ async function test() {
 </script>
 
 <style scoped>
-.supertext-module { padding: 0 var(--content-padding) var(--content-padding-bottom); max-width: 800px; display: grid; gap: 16px; }
+.supertext-module { padding: 0 var(--content-padding) var(--content-padding-bottom); max-width: 960px; display: grid; gap: 16px; }
 dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px; margin: 0; }
 dt { font-weight: 600; }
 dd { margin: 0; }
@@ -232,8 +243,9 @@ h2 { margin-top: 12px; }
 .languages td { vertical-align: top; overflow-wrap: anywhere; }
 .languages td .hint, .languages td .fail { margin-top: 4px; font-size: 0.9em; }
 .languages td:first-child code { display: block; }
-.languages th:nth-child(1) { width: 27%; }
-.languages th:nth-child(2) { width: 48%; }
-.languages th:nth-child(3) { width: 25%; }
+.languages th:nth-child(1) { width: 22%; }
+.languages th:nth-child(2) { width: 40%; }
+.languages th:nth-child(3) { width: 22%; }
+.languages th:nth-child(4) { width: 16%; }
 .languages .target-select, .languages .tone-select { width: 100%; }
 </style>

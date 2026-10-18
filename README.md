@@ -10,6 +10,7 @@ AI translation for [Directus](https://directus.io) 12 by [Supertext](https://www
 - Flow operation for bulk and automatic translation
 - *Export for translation* / *Import translation*: XLIFF 1.2 or HTML files for translation tools, translators or Supertext's web app
 - A *Supertext* page for administrators with the configuration and a connection test
+- *Translation review* per language: reviewers correct translations on the website, corrections come back with the next translation ([details](docs/INSTALLATION.md#translation-review))
 
 **Live demo:** <https://directus-production-349f.up.railway.app/admin> (credentials from the Supertext team)
 

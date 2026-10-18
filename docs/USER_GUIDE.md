@@ -92,6 +92,7 @@ If the source language has no text, the dialog says *Nothing to translate.* Whoe
 - **Supertext translates the saved text.** If you changed the source language and didn't save, the box asks you to save first.
 - **Translating again replaces** the translated fields of the selected languages. Make changes in the source language and translate again, or edit only after the last translation.
 - Fields you fill by hand that Supertext doesn't translate (e.g. a slug) are kept.
+- **Translation review:** if your administrator turned on *Translation review* for a language, reviewers (your colleagues or Supertext linguists) check and correct the translations on the website. Their corrections come into Directus the next time you translate the item into that language: after a review, translate it again and save. Texts reviewed once keep their corrected wording in later translations.
 - **Export and import work without an API key**: nothing is sent to Supertext's API.
 - Your administrator may also translate automatically when items are created, or in bulk from the item list (a *Flow*). Those save directly.
 

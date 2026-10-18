@@ -13,6 +13,21 @@ AI translation for [Directus](https://directus.io) 12 by [Supertext](https://www
 
 **Live demo:** <https://directus-production-349f.up.railway.app/admin> (credentials from the Supertext team)
 
+## Export for translation and import (XLIFF and HTML)
+
+Besides translating with Supertext AI, you can export an item as a file, have it translated elsewhere and import the result.
+
+- **Where:** two buttons in the *Translate with Supertext* box on the item form; imported translations go into the form and are saved with Save.
+- **Formats:** XLIFF 1.2 for translation tools such as Trados, memoQ or Phrase (formatting travels as protected tags; several target languages in one file), or HTML (one language per file) for translators or Supertext's web app, which keeps the file's head and `data-st-id` attributes, so the translated file imports as it is.
+- **Import:** the file says what it was exported from and for which language. The translations are written with the same rules as a Supertext AI translation, and a summary shows what was imported and what was skipped: source changed since the export (import those anyway with *Also import texts whose source changed since the export*), not translated, formatting changed, not in the file.
+- **Safe:** files over 10 MB, files from another system and translations that add markup the source doesn't have are refused; uploaded files aren't stored.
+
+![Export for translation: file format (XLIFF 1.2 or HTML) and target languages](docs/images/11-export-dialog.png)
+
+![The import summary: imported texts and the ones skipped and why](docs/images/12-import-summary.png)
+
+Details: [user guide](docs/USER_GUIDE.md#translate-with-a-file-xliff-or-html).
+
 ## Requirements
 
 Directus 12 and a Supertext API key. No Supertext account yet? [Create one at supertext.com](https://www.supertext.com/person/en/account/signin). Generate your API key at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (requires the Admin role) and set it as `SUPERTEXT_API_KEY`. Details in the [Installation guide](docs/INSTALLATION.md#supertext-account-and-api-key).

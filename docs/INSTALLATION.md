@@ -6,8 +6,8 @@ For administrators who set up a Directus project. Editors: see the [User guide](
 
 | | |
 | --- | --- |
-| Directus | 12 (tested with 12.5) |
-| Node.js | 22 or newer (as required by Directus 12) |
+| Directus | 12 (tested with 12.6) |
+| Node.js | 22 or newer, as required by Directus 12 (Directus 12.6 and later need Node.js 26 or newer) |
 | Database | Any database Directus supports (tested with PostgreSQL and SQLite) |
 | Multilingual content | Directus's standard setup: a languages collection and a **Translations** field on each collection to translate (see [Language setup](#language-setup)) |
 | Supertext | A Supertext account and an API key with access to AI translation (see [Supertext account and API key](#supertext-account-and-api-key)) |

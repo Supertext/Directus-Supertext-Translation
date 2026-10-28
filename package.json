@@ -72,7 +72,7 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "@directus/extensions-sdk": "^18.0.6",
+    "@directus/extensions-sdk": "^18.1.0",
     "@types/node": "^26.6.4",
     "supertext-plugin-health": "file:vendor/supertext-plugin-health",
     "supertext-sdk": "file:vendor/supertext-sdk",

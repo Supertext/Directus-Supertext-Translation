@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- Support for Directus 12.6 and Node.js 24 and 26: tested in CI on Node 22, 24 and 26, with the integration tests on Directus 12.6.0 (which needs Node.js 26); the demo runs Directus 12.6.0. Directus extensions SDK 18.1.
 - **Translation review** on/off per language on the Supertext page (module bar → Supertext → *Languages*, checkbox *Translation review*, then *Save languages*): translations into a language with it ticked go through Supertext's review service (Supertext Localization Review), where customers and Supertext linguists correct them on the website with a Chrome extension; corrections come back into Directus with the next translation, and texts translated before keep their (reviewed) wording. Same API key, billing, languages and messages; other languages keep going directly to Supertext. Applies to the translate box and the Flow operation. New setting `SUPERTEXT_REVIEW_URL` (defaults to Supertext's review service; empty turns review off for every language), shown on the Supertext page as *Review service*. Stored with the language mapping in `supertext_state`; existing installations start with review off. All four interface languages.
 - Requests to Supertext name the extension's version in the User-Agent (`Directus-Supertext-Translation/<version>`).
 
